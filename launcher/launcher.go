@@ -21,5 +21,6 @@ func SetupEnv(startCmd string) map[string]string {
 		"INSTANCE_GUID":           "instance_id",
 		"TMPDIR":                  "/home/vcap/tmp",
 		"START_COMMAND":           startCmd,
+		"PORT":                    "8080",
 	}
 }
