@@ -14,7 +14,7 @@ import (
 	"code.cloudfoundry.org/runtimeschema/cc_messages"
 )
 
-const StagerImage = "eirini/recipe"
+const StagerImage = "eirini/recipe:demo"
 
 type Stager struct {
 	Desirer    opi.TaskDesirer
