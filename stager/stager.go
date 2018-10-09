@@ -75,6 +75,7 @@ func (s *Stager) createStagingTask(stagingGUID string, request cc_messages.Stagi
 			eirini.EnvCfPassword:         s.Config.CfPassword,
 			eirini.EnvAPIAddress:         s.Config.APIAddress,
 			eirini.EnvEiriniAddress:      s.Config.EiriniAddress,
+			"PORT":                       "8080",
 		},
 	}
 	return stagingTask, nil
