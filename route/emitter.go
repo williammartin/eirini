@@ -82,6 +82,7 @@ func (e *Emitter) publish(subject string, routes []string, name string) error {
 		TLSPort: tlsPort,
 		URIs:    routes,
 		App:     name,
+		TLS:     false,
 	}
 
 	routeJSON, err := json.Marshal(message)

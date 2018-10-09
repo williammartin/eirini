@@ -6,4 +6,5 @@ type RegistryMessage struct {
 	TLSPort uint32   `json:"tls_port,omitempty"`
 	URIs    []string `json:"uris"`
 	App     string   `json:"app,omitempty"`
+	TLS     bool     `json:"tls"`
 }
