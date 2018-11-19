@@ -216,7 +216,7 @@ var _ = Describe("Statefulset", func() {
 			})
 
 			It("should not create the app", func() {
-				_, err := client.AppsV1beta2().StatefulSets(namespace).Get(appName, meta.GetOptions{})
+				_, err = client.AppsV1beta2().StatefulSets(namespace).Get(appName, meta.GetOptions{})
 				Expect(err).To(HaveOccurred())
 			})
 		})
@@ -282,13 +282,13 @@ var _ = Describe("Statefulset", func() {
 
 		BeforeEach(func() {
 			for _, l := range lrps {
-				_, err := client.AppsV1beta2().StatefulSets(namespace).Create(toStatefulSet(l))
+				_, err = client.AppsV1beta2().StatefulSets(namespace).Create(toStatefulSet(l))
 				Expect(err).ToNot(HaveOccurred())
 			}
 		})
 
 		It("deletes the statefulSet", func() {
-			err := statefulSetDesirer.Stop("odin")
+			err = statefulSetDesirer.Stop("odin")
 			Expect(err).ToNot(HaveOccurred())
 
 			Eventually(listStatefulSets, timeout).Should(HaveLen(2))

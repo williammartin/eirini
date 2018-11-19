@@ -444,8 +444,8 @@ var _ = Describe("Bifrost", func() {
 			opiClient = new(opifakes.FakeDesirer)
 			lager = lagertest.NewTestLogger("bifrost-get-instances-test")
 			expectedInstances = []*cf.Instance{
-				&cf.Instance{Index: 0, State: cf.RunningState},
-				&cf.Instance{Index: 1, State: cf.RunningState},
+				{Index: 0, State: cf.RunningState},
+				{Index: 1, State: cf.RunningState},
 			}
 
 			opiClient.GetInstancesReturns(expectedInstances, nil)
