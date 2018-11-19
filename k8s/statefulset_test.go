@@ -146,7 +146,6 @@ var _ = Describe("Statefulset", func() {
 		Context("when the app exists", func() {
 
 			var (
-				err     error
 				appName string
 			)
 
@@ -205,7 +204,6 @@ var _ = Describe("Statefulset", func() {
 		Context("when the app does not exist", func() {
 
 			var (
-				err     error
 				appName string
 			)
 
@@ -228,7 +226,6 @@ var _ = Describe("Statefulset", func() {
 
 		var (
 			actualLRPs []*opi.LRP
-			err        error
 		)
 
 		BeforeEach(func() {
@@ -318,8 +315,10 @@ var _ = Describe("Statefulset", func() {
 		var instances []*cf.Instance
 
 		BeforeEach(func() {
-			client.CoreV1().Pods(namespace).Create(toPod(lrpName, 0, 123))
-			client.CoreV1().Pods(namespace).Create(toPod(lrpName, 1, 456))
+			_, err = client.CoreV1().Pods(namespace).Create(toPod(lrpName, 0, 123))
+			Expect(err).ToNot(HaveOccurred())
+			_, err = client.CoreV1().Pods(namespace).Create(toPod(lrpName, 1, 456))
+			Expect(err).ToNot(HaveOccurred())
 		})
 
 		JustBeforeEach(func() {
