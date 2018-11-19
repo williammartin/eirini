@@ -2,6 +2,7 @@ package k8s_test
 
 import (
 	"errors"
+	"strconv"
 	"time"
 
 	"code.cloudfoundry.org/eirini"
@@ -310,6 +311,31 @@ var _ = Describe("Statefulset", func() {
 			})
 		})
 	})
+
+	Context("Get LRP instances", func() {
+
+		const lrpName = "odin"
+		var instances []*cf.Instance
+
+		BeforeEach(func() {
+			client.CoreV1().Pods(namespace).Create(toPod(lrpName, 0, 123))
+			client.CoreV1().Pods(namespace).Create(toPod(lrpName, 1, 456))
+		})
+
+		JustBeforeEach(func() {
+			instances, err = statefulSetDesirer.GetInstances(lrpName)
+		})
+
+		It("should not return an error", func() {
+			Expect(err).ToNot(HaveOccurred())
+		})
+
+		It("should return the correct number of instances", func() {
+			Expect(instances).To(HaveLen(2))
+			Expect(instances[0]).To(Equal(toInstance(0, 123)))
+			Expect(instances[1]).To(Equal(toInstance(1, 456)))
+		})
+	})
 })
 
 func getStatefulSetNames(statefulSets []v1beta2.StatefulSet) []string {
@@ -318,6 +344,26 @@ func getStatefulSetNames(statefulSets []v1beta2.StatefulSet) []string {
 		statefulSetNames = append(statefulSetNames, d.Name)
 	}
 	return statefulSetNames
+}
+
+func toPod(lrpName string, index int, unixTime int64) *v1.Pod {
+	pod := v1.Pod{}
+	pod.Name = lrpName + "-" + strconv.Itoa(index)
+	pod.Labels = map[string]string{
+		"name": lrpName,
+	}
+
+	time := meta.Unix(unixTime, 0)
+	pod.Status.StartTime = &time
+	return &pod
+}
+
+func toInstance(index int, since int64) *cf.Instance {
+	return &cf.Instance{
+		Index: index,
+		Since: since,
+		State: cf.RunningState,
+	}
 }
 
 func toStatefulSet(lrp *opi.LRP) *v1beta2.StatefulSet {
