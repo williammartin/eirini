@@ -1,8 +1,6 @@
 package metrics
 
 import (
-	"strconv"
-
 	loggregator "code.cloudfoundry.org/go-loggregator"
 )
 
@@ -17,10 +15,8 @@ func NewLoggregatorForwarder(client *loggregator.IngressClient) *LoggregatorForw
 }
 
 func (l *LoggregatorForwarder) Forward(msg Message) {
-	index, _ := strconv.Atoi(msg.IndexID)
 	l.client.EmitGauge(
 		loggregator.WithGaugeSourceInfo(msg.AppID, msg.IndexID),
-		loggregator.WithGaugeAppInfo(msg.AppID, index),
 		loggregator.WithGaugeValue("cpu", convertCPU(msg.CPU), "percentage"),
 		loggregator.WithGaugeValue("memory", convertMemory(msg.Memory), "bytes"),
 		loggregator.WithGaugeValue("disk", msg.Disk, "bytes"),
