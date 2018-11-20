@@ -310,16 +310,27 @@ var _ = Describe("Statefulset", func() {
 	Context("Get LRP instances", func() {
 
 		const lrpName = "odin"
-		var instances []*opi.Instance
+
+		var (
+			instances []*opi.Instance
+			pod1      *v1.Pod
+			pod2      *v1.Pod
+		)
 
 		BeforeEach(func() {
-			_, err = client.CoreV1().Pods(namespace).Create(toPod(lrpName, 0, 123))
-			Expect(err).ToNot(HaveOccurred())
-			_, err = client.CoreV1().Pods(namespace).Create(toPod(lrpName, 1, 456))
-			Expect(err).ToNot(HaveOccurred())
+			since1 := meta.Unix(123, 0)
+			pod1 = toPod(lrpName, 0, &since1)
+			since2 := meta.Unix(456, 0)
+			pod2 = toPod(lrpName, 1, &since2)
 		})
 
 		JustBeforeEach(func() {
+			_, err = client.CoreV1().Pods(namespace).Create(pod1)
+			Expect(err).ToNot(HaveOccurred())
+
+			_, err = client.CoreV1().Pods(namespace).Create(pod2)
+			Expect(err).ToNot(HaveOccurred())
+
 			instances, err = statefulSetDesirer.GetInstances(lrpName)
 		})
 
@@ -332,6 +343,25 @@ var _ = Describe("Statefulset", func() {
 			Expect(instances[0]).To(Equal(toInstance(0, 123)))
 			Expect(instances[1]).To(Equal(toInstance(1, 456)))
 		})
+
+		Context("time since creation is not available yet", func() {
+
+			BeforeEach(func() {
+				pod1 = toPod(lrpName, 0, nil)
+				since2 := meta.Unix(456, 0)
+				pod2 = toPod(lrpName, 1, &since2)
+			})
+
+			It("should not return an error", func() {
+				Expect(err).ToNot(HaveOccurred())
+			})
+
+			It("should return a default value", func() {
+				Expect(instances).To(HaveLen(2))
+				Expect(instances[0]).To(Equal(toInstance(0, 0)))
+				Expect(instances[1]).To(Equal(toInstance(1, 456)))
+			})
+		})
 	})
 })
 
@@ -343,15 +373,14 @@ func getStatefulSetNames(statefulSets []v1beta2.StatefulSet) []string {
 	return statefulSetNames
 }
 
-func toPod(lrpName string, index int, unixTime int64) *v1.Pod {
+func toPod(lrpName string, index int, time *meta.Time) *v1.Pod {
 	pod := v1.Pod{}
 	pod.Name = lrpName + "-" + strconv.Itoa(index)
 	pod.Labels = map[string]string{
 		"name": lrpName,
 	}
 
-	time := meta.Unix(unixTime, 0)
-	pod.Status.StartTime = &time
+	pod.Status.StartTime = time
 	return &pod
 }
 
