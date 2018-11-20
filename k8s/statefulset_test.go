@@ -310,7 +310,7 @@ var _ = Describe("Statefulset", func() {
 	Context("Get LRP instances", func() {
 
 		const lrpName = "odin"
-		var instances []*cf.Instance
+		var instances []*opi.Instance
 
 		BeforeEach(func() {
 			_, err = client.CoreV1().Pods(namespace).Create(toPod(lrpName, 0, 123))
@@ -355,8 +355,8 @@ func toPod(lrpName string, index int, unixTime int64) *v1.Pod {
 	return &pod
 }
 
-func toInstance(index int, since int64) *cf.Instance {
-	return &cf.Instance{
+func toInstance(index int, since int64) *opi.Instance {
+	return &opi.Instance{
 		Index: index,
 		Since: since,
 		State: cf.RunningState,
