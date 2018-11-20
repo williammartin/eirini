@@ -297,8 +297,6 @@ var _ = Describe("Statefulset", func() {
 
 		Context("when the statefulSet does not exist", func() {
 
-			var err error
-
 			JustBeforeEach(func() {
 				err = statefulSetDesirer.Stop("test-app-where-are-you")
 			})
