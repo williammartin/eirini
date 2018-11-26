@@ -235,7 +235,7 @@ func launchEventReporter(uri, ca, cert, key, kubeConf, namespace string) {
 		0,
 		namespace,
 		work,
-		make(chan struct{}, 20),
+		make(chan struct{}),
 	)
 
 	go crashInformer.Start()

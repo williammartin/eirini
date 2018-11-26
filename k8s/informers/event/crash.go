@@ -39,7 +39,7 @@ func NewCrashInformer(
 		namespace:   namespace,
 		reportChan:  reportChan,
 		stopperChan: stopperChan,
-		workChan:    make(chan v1.Pod),
+		workChan:    make(chan v1.Pod, 20),
 	}
 }
 
@@ -59,7 +59,7 @@ func (c *CrashInformer) Start() {
 }
 
 func (c *CrashInformer) updateFunc(obj interface{}, newObj interface{}) {
-	mObj := obj.(*v1.Pod)
+	mObj := newObj.(*v1.Pod)
 	c.workChan <- *mObj
 }
 
@@ -72,21 +72,46 @@ func (c *CrashInformer) Work() {
 				continue
 			}
 
+			terminated := pod.Status.ContainerStatuses[0].State.Terminated
+			if terminated != nil && terminated.ExitCode != 0 {
+				c.reportState(pod, terminated.Reason, int(terminated.ExitCode), terminated.Reason, int64(terminated.StartedAt.Second()))
+				continue
+			}
+
 			waiting := pod.Status.ContainerStatuses[0].State.Waiting
 			if waiting != nil && waiting.Reason == CrashLoopBackOff {
-				report, err := toReport(pod)
-				if err != nil {
-					continue
-				}
-				c.reportChan <- report
+				container := pod.Status.ContainerStatuses[0]
+				exitStatus := int(container.LastTerminationState.Terminated.ExitCode)
+				exitDescription := container.LastTerminationState.Terminated.Reason
+				crashTimestamp := int64(container.LastTerminationState.Terminated.StartedAt.Second())
+				c.reportState(pod, waiting.Reason, exitStatus, exitDescription, crashTimestamp)
 			}
+
 		case <-c.stopperChan:
 			return
 		}
 	}
 }
 
-func toReport(pod v1.Pod) (events.CrashReport, error) {
+func (c *CrashInformer) reportState(
+	pod v1.Pod,
+	reason string,
+	exitStatus int,
+	exitDescription string,
+	crashTimestamp int64,
+) {
+	if report, err := toReport(pod, reason, exitStatus, exitDescription, crashTimestamp); err == nil {
+		c.reportChan <- report
+	}
+}
+
+func toReport(
+	pod v1.Pod,
+	reason string,
+	exitStatus int,
+	exitDescription string,
+	crashTimestamp int64,
+) (events.CrashReport, error) {
 	container := pod.Status.ContainerStatuses[0]
 	index, err := parsePodIndex(pod.Name)
 	if err != nil {
@@ -96,13 +121,13 @@ func toReport(pod v1.Pod) (events.CrashReport, error) {
 	return events.CrashReport{
 		ProcessGuid: pod.Annotations[cf.ProcessGUID],
 		AppCrashedRequest: cc_messages.AppCrashedRequest{
-			Reason:          container.State.Waiting.Reason,
+			Reason:          reason,
 			Instance:        pod.Name,
 			Index:           index,
-			ExitStatus:      int(container.LastTerminationState.Terminated.ExitCode),
-			ExitDescription: container.LastTerminationState.Terminated.Reason,
+			ExitStatus:      exitStatus,
+			ExitDescription: exitDescription,
+			CrashTimestamp:  crashTimestamp,
 			CrashCount:      int(container.RestartCount),
-			CrashTimestamp:  int64(container.LastTerminationState.Terminated.FinishedAt.Second()),
 		},
 	}, nil
 }

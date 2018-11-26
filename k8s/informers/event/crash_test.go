@@ -22,8 +22,6 @@ var _ = Describe("Event", func() {
 
 	var (
 		client        kubernetes.Interface
-		syncPeriod    time.Duration
-		namespace     string
 		crashInformer *CrashInformer
 
 		reportChan      chan events.CrashReport
@@ -36,18 +34,6 @@ var _ = Describe("Event", func() {
 	)
 
 	BeforeEach(func() {
-		reportChan = make(chan events.CrashReport)
-		informerStopper = make(chan struct{})
-
-		client = fake.NewSimpleClientset()
-		syncPeriod = 0
-		namespace = "milkyway"
-		crashInformer = NewCrashInformer(client, syncPeriod, namespace, reportChan, informerStopper)
-
-		watcher = watch.NewFake()
-		fakecs := client.(*fake.Clientset)
-		fakecs.PrependWatchReactor("pods", testing.DefaultWatchReactor(watcher, nil))
-
 		pinky = createPod("pinky-pod", 0)
 		brain = createPod("brain-pod", 0)
 		bandito = createStatelessPod("bandito")
@@ -58,6 +44,16 @@ var _ = Describe("Event", func() {
 	})
 
 	JustBeforeEach(func() {
+		reportChan = make(chan events.CrashReport)
+		informerStopper = make(chan struct{})
+
+		client = fake.NewSimpleClientset()
+		crashInformer = NewCrashInformer(client, 0, "milkyway", reportChan, informerStopper)
+
+		watcher = watch.NewFake()
+		fakecs := client.(*fake.Clientset)
+		fakecs.PrependWatchReactor("pods", testing.DefaultWatchReactor(watcher, nil))
+
 		go crashInformer.Start()
 		go crashInformer.Work()
 
@@ -66,58 +62,152 @@ var _ = Describe("Event", func() {
 		watcher.Add(bandito)
 	})
 
-	Context("When an app crashes", func() {
+	Context("When an app crashes with waiting status", func() {
+
+		var (
+			pinkyCopy   *v1.Pod
+			brainCopy   *v1.Pod
+			banditoCopy *v1.Pod
+		)
+
 		JustBeforeEach(func() {
-			pinky.Status.ContainerStatuses[0].State = v1.ContainerState{
-				Waiting: &v1.ContainerStateWaiting{
-					Reason: CrashLoopBackOff,
-				},
-			}
-			crashTime = meta.Time{time.Now()}
-			pinky.Status.ContainerStatuses[0].LastTerminationState = v1.ContainerState{
-				Terminated: &v1.ContainerStateTerminated{
-					ExitCode:   -1,
-					Reason:     "this describes how much you screwed up",
-					FinishedAt: crashTime,
-				},
-			}
-			pinky.Status.ContainerStatuses[0].RestartCount = 3
-
-			brain.Status.ContainerStatuses[0].State = v1.ContainerState{
-				Waiting: &v1.ContainerStateWaiting{
-					Reason: "sleepy",
-				},
-			}
-
-			bandito.Name = "no-bandito"
-			watcher.Modify(pinky)
-			watcher.Modify(brain)
-			watcher.Modify(bandito)
+			watcher.Modify(pinkyCopy)
+			watcher.Modify(brainCopy)
+			watcher.Modify(banditoCopy)
 		})
 
-		It("should send reports the report chan", func() {
-			Eventually(reportChan).Should(Receive())
+		Context("has waiting status", func() {
+			BeforeEach(func() {
+				pinkyCopy = createPod("pinky-pod", 0)
+				crashTime = meta.Time{Time: time.Now()}
+				pinkyCopy.Status.ContainerStatuses = []v1.ContainerStatus{
+					{
+						RestartCount: 3,
+						State: v1.ContainerState{
+							Waiting: &v1.ContainerStateWaiting{
+								Reason: CrashLoopBackOff,
+							},
+						},
+						LastTerminationState: v1.ContainerState{
+							Terminated: &v1.ContainerStateTerminated{
+								ExitCode:  -1,
+								Reason:    "this describes how much you screwed up",
+								StartedAt: crashTime,
+							},
+						},
+					},
+				}
+
+				brainCopy = createPod("brain-pod", 0)
+				brainCopy.Status.ContainerStatuses = []v1.ContainerStatus{
+					{
+						State: v1.ContainerState{
+							Waiting: &v1.ContainerStateWaiting{
+								Reason: "sleepy",
+							},
+						},
+					},
+				}
+
+				banditoCopy = createStatelessPod("bandito")
+				banditoCopy.Name = "no-bandito"
+			})
+
+			It("should send reports the report chan", func() {
+				Eventually(reportChan).Should(Receive())
+			})
+
+			It("should receive a crashed report", func() {
+				Eventually(reportChan).Should(Receive(Equal(events.CrashReport{
+					ProcessGuid: "pinky-pod-anno",
+					AppCrashedRequest: cc_messages.AppCrashedRequest{
+						Reason:          CrashLoopBackOff,
+						Instance:        "pinky-pod-0",
+						Index:           0,
+						ExitStatus:      -1,
+						ExitDescription: "this describes how much you screwed up",
+						CrashCount:      3,
+						CrashTimestamp:  int64(crashTime.Time.Second()),
+					},
+				})))
+			})
+
+			It("should not get more reports", func() {
+				Eventually(reportChan).Should(Receive())
+				Consistently(reportChan).ShouldNot(Receive())
+			})
 		})
 
-		It("should receive a crashed report", func() {
-			Eventually(reportChan).Should(Receive(Equal(events.CrashReport{
-				ProcessGuid: "pinky-pod-anno",
-				AppCrashedRequest: cc_messages.AppCrashedRequest{
-					Reason:          CrashLoopBackOff,
-					Instance:        "pinky-pod-0",
-					Index:           0,
-					ExitStatus:      -1,
-					ExitDescription: "this describes how much you screwed up",
-					CrashCount:      3,
-					CrashTimestamp:  int64(crashTime.Time.Second()),
-				},
-			})))
+		Context("has terminated status", func() {
+
+			BeforeEach(func() {
+				pinkyCopy = createPod("pinky-pod", 0)
+				pinkyCopy.Status.ContainerStatuses = []v1.ContainerStatus{
+					{
+						State: v1.ContainerState{
+							Waiting: &v1.ContainerStateWaiting{
+								Reason: "sleepy",
+							},
+						},
+					},
+				}
+
+				brainCopy = createPod("brain-pod", 0)
+				crashTime = meta.Time{Time: time.Now()}
+				brainCopy.Status.ContainerStatuses = []v1.ContainerStatus{
+					{
+						RestartCount: 8,
+						State: v1.ContainerState{
+							Terminated: &v1.ContainerStateTerminated{
+								ExitCode:  -1,
+								Reason:    "this describes how much you screwed up",
+								StartedAt: crashTime,
+							},
+						},
+					},
+				}
+
+				banditoCopy = createStatelessPod("bandito")
+				banditoCopy.Name = "no-bandito"
+			})
+
+			It("should send reports the report chan", func() {
+				Eventually(reportChan).Should(Receive())
+			})
+
+			It("should receive a crashed report", func() {
+				Eventually(reportChan).Should(Receive(Equal(events.CrashReport{
+					ProcessGuid: "brain-pod-anno",
+					AppCrashedRequest: cc_messages.AppCrashedRequest{
+						Reason:          "this describes how much you screwed up",
+						Instance:        "brain-pod-0",
+						Index:           0,
+						ExitStatus:      -1,
+						ExitDescription: "this describes how much you screwed up",
+						CrashCount:      8,
+						CrashTimestamp:  int64(crashTime.Time.Second()),
+					},
+				})))
+			})
+
+			It("should not get more reports", func() {
+				Eventually(reportChan).Should(Receive())
+				Consistently(reportChan).ShouldNot(Receive())
+			})
+
+			Context("exited normally", func() {
+				BeforeEach(func() {
+					brainCopy.Status.ContainerStatuses[0].State.Terminated.ExitCode = 0
+				})
+
+				It("should not send reports", func() {
+					Consistently(reportChan).ShouldNot(Receive())
+				})
+
+			})
+
 		})
 
-		It("should not get more reports", func() {
-			<-reportChan
-			Consistently(reportChan).ShouldNot(Receive())
-		})
 	})
 
 	Context("When a pod has no container statuses", func() {

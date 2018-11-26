@@ -1,6 +1,8 @@
 package events
 
 import (
+	"fmt"
+
 	"code.cloudfoundry.org/eirini/route"
 	"code.cloudfoundry.org/lager"
 	"code.cloudfoundry.org/runtimeschema/cc_messages"
@@ -35,6 +37,7 @@ func NewCrashReporter(reportChan <-chan CrashReport, scheduler route.TaskSchedul
 func (c *CrashReporter) Run() {
 	c.scheduler.Schedule(func() error {
 		report := <-c.reports
+		fmt.Sprintf("SENDINGGGGGGGGGGG app guid: %s, ---------------- request: %s", report.ProcessGuid, report.AppCrashedRequest)
 		return c.client.AppCrashed(report.ProcessGuid, report.AppCrashedRequest, c.logger)
 	})
 }
