@@ -202,6 +202,10 @@ func (m *StatefulSetDesirer) toStatefulSet(lrp *opi.LRP) *v1beta2.StatefulSet {
 	}
 
 	envs = append(envs, fieldEnvs...)
+	ports := []v1.ContainerPort{}
+	for _, port := range lrp.Ports {
+		ports = append(ports, v1.ContainerPort{ContainerPort: port})
+	}
 
 	livenessProbe := m.LivenessProbeCreator(lrp)
 	readinessProbe := m.ReadinessProbeCreator(lrp)
@@ -218,16 +222,11 @@ func (m *StatefulSetDesirer) toStatefulSet(lrp *opi.LRP) *v1beta2.StatefulSet {
 				Spec: v1.PodSpec{
 					Containers: []v1.Container{
 						{
-							Name:    "opi",
-							Image:   lrp.Image,
-							Command: lrp.Command,
-							Env:     envs,
-							Ports: []v1.ContainerPort{
-								{
-									Name:          "expose",
-									ContainerPort: 8080,
-								},
-							},
+							Name:           "opi",
+							Image:          lrp.Image,
+							Command:        lrp.Command,
+							Env:            envs,
+							Ports:          ports,
 							LivenessProbe:  livenessProbe,
 							ReadinessProbe: readinessProbe,
 						},

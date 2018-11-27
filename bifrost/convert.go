@@ -68,6 +68,7 @@ func (c *DropletToImageConverter) Convert(request cf.DesireLRPRequest) (opi.LRP,
 			TimeoutMs: request.HealthCheckTimeoutMs,
 			Port:      int32(8080),
 		},
+		Ports: request.Ports,
 		Metadata: map[string]string{
 			cf.VcapAppName: vcap.AppName,
 			cf.VcapAppID:   vcap.AppID,

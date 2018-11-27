@@ -53,6 +53,7 @@ var _ = Describe("Convert CC DesiredApp into an opi LRP", func() {
 			HealthCheckType:         "http",
 			HealthCheckHTTPEndpoint: "/heat",
 			HealthCheckTimeoutMs:    400,
+			Ports:                   []int32{8080, 8888},
 		}
 	})
 
@@ -125,6 +126,10 @@ var _ = Describe("Convert CC DesiredApp into an opi LRP", func() {
 				Expect(health.Port).To(Equal(int32(8080)))
 				Expect(health.Endpoint).To(Equal("/heat"))
 				Expect(health.TimeoutMs).To(Equal(uint(400)))
+			})
+
+			It("should set the ports", func() {
+				Expect(lrp.Ports).To(Equal([]int32{8080, 8888}))
 			})
 
 		}

@@ -31,6 +31,7 @@ type DesireLRPRequest struct {
 	HealthCheckType         string            `json:"health_check_type"`
 	HealthCheckHTTPEndpoint string            `json:"health_check_http_endpoint"`
 	HealthCheckTimeoutMs    uint              `json:"health_check_timeout_ms"`
+	Ports                   []int32           `json:"ports"`
 }
 
 type GetInstancesResponse struct {
