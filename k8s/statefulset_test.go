@@ -558,6 +558,7 @@ func createLRP(processGUID, lastUpdated, routes string) *opi.LRP {
 		},
 		RunningInstances: 0,
 		Image:            "busybox",
+		Ports:            []int32{8888, 9999},
 		Metadata: map[string]string{
 			cf.ProcessGUID: processGUID,
 			cf.LastUpdated: lastUpdated,
