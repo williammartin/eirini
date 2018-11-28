@@ -46,7 +46,12 @@ func (c *DropletToImageConverter) Convert(request cf.DesireLRPRequest) (opi.LRP,
 		return opi.LRP{}, err
 	}
 
-	uris, err := json.Marshal(vcap.AppUris)
+	routes := []cf.Route{}
+	for _, uri := range vcap.AppUris {
+		routes = append(routes, cf.Route{Hostname: uri, Port: request.Ports[0]})
+	}
+
+	routesJson, err := json.Marshal(routes)
 	if err != nil {
 		c.logger.Error("failed-to-marshal-vcap-app-uris", err, lager.Data{"app-guid": vcap.AppID})
 		panic(err)
@@ -73,7 +78,7 @@ func (c *DropletToImageConverter) Convert(request cf.DesireLRPRequest) (opi.LRP,
 			cf.VcapAppName: vcap.AppName,
 			cf.VcapAppID:   vcap.AppID,
 			cf.VcapVersion: vcap.Version,
-			cf.VcapAppUris: string(uris),
+			cf.VcapAppUris: string(routesJson),
 			cf.ProcessGUID: request.ProcessGUID,
 			cf.LastUpdated: request.LastUpdated,
 		},

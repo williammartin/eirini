@@ -46,6 +46,11 @@ type Instance struct {
 	State string `json:"state"`
 }
 
+type Route struct {
+	Hostname string `json:"hostname"`
+	Port     int32  `json:"port"`
+}
+
 type AppCrashedRequest struct {
 	Instance        string `json:"instance"`
 	Index           int    `json:"index"`

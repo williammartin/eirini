@@ -128,6 +128,10 @@ var _ = Describe("Convert CC DesiredApp into an opi LRP", func() {
 				Expect(health.TimeoutMs).To(Equal(uint(400)))
 			})
 
+			It("sets the app routes", func() {
+				Expect(lrp.Metadata[cf.VcapAppUris]).To(Equal(`[{"hostname":"bumblebee.example.com","port":8080},{"hostname":"transformers.example.com","port":8080}]`))
+			})
+
 			It("should set the ports", func() {
 				Expect(lrp.Ports).To(Equal([]int32{8080, 8888}))
 			})
