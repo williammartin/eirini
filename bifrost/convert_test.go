@@ -1,6 +1,7 @@
 package bifrost_test
 
 import (
+	"encoding/json"
 	"errors"
 	"net/http"
 
@@ -37,6 +38,21 @@ var _ = Describe("Convert CC DesiredApp into an opi LRP", func() {
 		fakeServer.AppendHandlers(
 			ghttp.VerifyRequest("POST", "/v2/transformers/bumblebee/blobs/"),
 		)
+		updatedRoutes := []map[string]interface{}{
+			{
+				"hostname": "bumblebee.example.com",
+				"port":     8080,
+			},
+			{
+				"hostname": "transformers.example.com",
+				"port":     7070,
+			},
+		}
+
+		routesJSON, marshalErr := json.Marshal(updatedRoutes)
+		Expect(marshalErr).ToNot(HaveOccurred())
+
+		rawJSON := json.RawMessage(routesJSON)
 		desireLRPRequest = cf.DesireLRPRequest{
 			ProcessGUID:    "b194809b-88c0-49af-b8aa-69da097fc360-2fdc448f-6bac-4085-9426-87d0124c433a",
 			DropletHash:    "the-droplet-hash",
@@ -54,6 +70,9 @@ var _ = Describe("Convert CC DesiredApp into an opi LRP", func() {
 			HealthCheckHTTPEndpoint: "/heat",
 			HealthCheckTimeoutMs:    400,
 			Ports:                   []int32{8080, 8888},
+			Routes: map[string]*json.RawMessage{
+				"cf-router": &rawJSON,
+			},
 		}
 	})
 
@@ -129,7 +148,7 @@ var _ = Describe("Convert CC DesiredApp into an opi LRP", func() {
 			})
 
 			It("sets the app routes", func() {
-				Expect(lrp.Metadata[cf.VcapAppUris]).To(Equal(`[{"hostname":"bumblebee.example.com","port":8080},{"hostname":"transformers.example.com","port":8080}]`))
+				Expect(lrp.Metadata[cf.VcapAppUris]).To(Equal(`[{"hostname":"bumblebee.example.com","port":8080},{"hostname":"transformers.example.com","port":7070}]`))
 			})
 
 			It("should set the ports", func() {

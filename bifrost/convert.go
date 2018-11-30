@@ -2,7 +2,6 @@ package bifrost
 
 import (
 	"bytes"
-	"encoding/json"
 	"fmt"
 	"net/http"
 
@@ -46,12 +45,7 @@ func (c *DropletToImageConverter) Convert(request cf.DesireLRPRequest) (opi.LRP,
 		return opi.LRP{}, err
 	}
 
-	routes := []cf.Route{}
-	for _, uri := range vcap.AppUris {
-		routes = append(routes, cf.Route{Hostname: uri, Port: request.Ports[0]})
-	}
-
-	routesJson, err := json.Marshal(routes)
+	routesJson, err := getRequestedRoutes(request)
 	if err != nil {
 		c.logger.Error("failed-to-marshal-vcap-app-uris", err, lager.Data{"app-guid": vcap.AppID})
 		panic(err)
@@ -83,6 +77,24 @@ func (c *DropletToImageConverter) Convert(request cf.DesireLRPRequest) (opi.LRP,
 			cf.LastUpdated: request.LastUpdated,
 		},
 	}, nil
+}
+
+func getRequestedRoutes(request cf.DesireLRPRequest) (string, error) {
+	routes := request.Routes
+	if routes == nil {
+		return "", nil
+	}
+	if _, ok := routes["cf-router"]; !ok {
+		return "", nil
+	}
+
+	cfRouterRoutes := routes["cf-router"]
+	data, err := cfRouterRoutes.MarshalJSON()
+	if err != nil {
+		return "", err
+	}
+
+	return string(data), nil
 }
 
 func (c *DropletToImageConverter) dropletToImageURI(request cf.DesireLRPRequest, vcap cf.VcapApp) (string, error) {
