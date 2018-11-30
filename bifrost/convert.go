@@ -54,7 +54,7 @@ func (c *DropletToImageConverter) Convert(request cf.DesireLRPRequest) (opi.LRP,
 	lev := launcher.SetupEnv(request.StartCommand)
 
 	return opi.LRP{
-		Name:            vcap.AppID,
+		Name:            request.GUID,
 		Image:           request.DockerImageURL,
 		TargetInstances: request.NumInstances,
 		Command: []string{
@@ -72,8 +72,8 @@ func (c *DropletToImageConverter) Convert(request cf.DesireLRPRequest) (opi.LRP,
 			cf.VcapAppName: vcap.AppName,
 			cf.VcapAppID:   vcap.AppID,
 			cf.VcapVersion: vcap.Version,
+			cf.ProcessGUID: fmt.Sprintf("%s-%s", request.GUID, request.Version),
 			cf.VcapAppUris: string(routesJson),
-			cf.ProcessGUID: request.ProcessGUID,
 			cf.LastUpdated: request.LastUpdated,
 		},
 	}, nil

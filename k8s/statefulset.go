@@ -8,6 +8,7 @@ import (
 	"code.cloudfoundry.org/eirini"
 	"code.cloudfoundry.org/eirini/models/cf"
 	"code.cloudfoundry.org/eirini/opi"
+	"github.com/pkg/errors"
 	"k8s.io/api/apps/v1beta2"
 	"k8s.io/api/core/v1"
 	meta "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -47,11 +48,24 @@ func (m *StatefulSetDesirer) List() ([]*opi.LRP, error) {
 
 func (m *StatefulSetDesirer) Stop(appName string) error {
 	backgroundPropagation := meta.DeletePropagationBackground
-	return m.statefulSets().Delete(appName, &meta.DeleteOptions{PropagationPolicy: &backgroundPropagation})
+	return m.statefulSets().Delete(appName[:36], &meta.DeleteOptions{PropagationPolicy: &backgroundPropagation})
 }
 
 func (m *StatefulSetDesirer) Desire(lrp *opi.LRP) error {
-	_, err := m.statefulSets().Create(m.toStatefulSet(lrp))
+	fmt.Printf("in desire, desiring %+v \n", lrp)
+	_, err := m.statefulSets().Get(lrp.Name, meta.GetOptions{})
+	if err != nil {
+		_, err = m.statefulSets().Create(m.toStatefulSet(lrp))
+		fmt.Println("in desire, after desiring", err)
+		return err
+	}
+
+	if err := m.Stop(lrp.Name); err != nil {
+		fmt.Println("failed to stop app")
+		return err
+	}
+	_, err = m.statefulSets().Create(m.toStatefulSet(lrp))
+	fmt.Println("after creating ", err)
 	return err
 }
 
@@ -71,18 +85,26 @@ func (m *StatefulSetDesirer) Update(lrp *opi.LRP) error {
 }
 
 func (m *StatefulSetDesirer) Get(appName string) (*opi.LRP, error) {
-	statefulSet, err := m.statefulSets().Get(appName, meta.GetOptions{})
+	appID := appName[:36]
+	version := appName[37:]
+	options := meta.ListOptions{LabelSelector: fmt.Sprintf("guid=%s,version=%s", appID, version)}
+	statefulSets, err := m.statefulSets().List(options)
 	if err != nil {
 		return nil, err
 	}
+	if len(statefulSets.Items) != 1 {
+		return nil, errors.New("no such app")
+	}
 
-	lrp := statefulSetToLRP(statefulSet)
+	lrp := statefulSetToLRP(&statefulSets.Items[0])
 
 	return lrp, nil
 }
 
 func (m *StatefulSetDesirer) GetInstances(appName string) ([]*opi.Instance, error) {
-	options := meta.ListOptions{LabelSelector: fmt.Sprintf("name=%s", appName)}
+	appID := appName[:36]
+	version := appName[37:]
+	options := meta.ListOptions{LabelSelector: fmt.Sprintf("guid=%s,version=%s", appID, version)}
 	pods, err := m.Client.CoreV1().Pods(m.Namespace).List(options)
 	if err != nil {
 		return []*opi.Instance{}, err
@@ -243,22 +265,26 @@ func (m *StatefulSetDesirer) toStatefulSet(lrp *opi.LRP) *v1beta2.StatefulSet {
 
 	statefulSet.Name = lrp.Name
 	statefulSet.Spec.Template.Labels = map[string]string{
-		"name": lrp.Name,
+		"guid":    lrp.Metadata[cf.VcapAppID],
+		"version": lrp.Metadata[cf.VcapVersion],
 	}
 
 	statefulSet.Spec.Selector = &meta.LabelSelector{
 		MatchLabels: map[string]string{
-			"name": lrp.Name,
+			"guid":    lrp.Metadata[cf.VcapAppID],
+			"version": lrp.Metadata[cf.VcapVersion],
 		},
 	}
 
 	statefulSet.Labels = map[string]string{
-		"eirini": "eirini",
-		"name":   lrp.Name,
+		"guid":    lrp.Metadata[cf.VcapAppID],
+		"version": lrp.Metadata[cf.VcapVersion],
 	}
 
 	statefulSet.Annotations = lrp.Metadata
 	statefulSet.Annotations[eirini.RegisteredRoutes] = lrp.Metadata[cf.VcapAppUris]
+
+	fmt.Println("STATEFULSET CONSTRUCTED")
 
 	return statefulSet
 }

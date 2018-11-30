@@ -2,7 +2,7 @@ package handler
 
 import (
 	"encoding/json"
-	"errors"
+	"fmt"
 	"net/http"
 
 	"code.cloudfoundry.org/bbs/models"
@@ -23,6 +23,7 @@ type App struct {
 }
 
 func (a *App) Desire(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+	fmt.Println("STARTED DESIRE IN APP HANDLER")
 	var request cf.DesireLRPRequest
 	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
 		a.logger.Error("request-body-decoding-failed", err)
@@ -30,23 +31,24 @@ func (a *App) Desire(w http.ResponseWriter, r *http.Request, ps httprouter.Param
 		return
 	}
 
-	processGUID := ps.ByName("process_guid")
-	if processGUID != request.ProcessGUID {
-		a.logger.Error("process-guid-mismatch", nil, lager.Data{"desired-app-process-guid": request.ProcessGUID})
-		w.WriteHeader(http.StatusBadRequest)
-		return
-	}
+	// processGUID := ps.ByName("process_guid")
+	// if processGUID != request.ProcessGUID {
+	// 	a.logger.Error("process-guid-mismatch", nil, lager.Data{"desired-app-process-guid": request.ProcessGUID})
+	// 	w.WriteHeader(http.StatusBadRequest)
+	// 	return
+	// }
 
 	if err := a.bifrost.Transfer(r.Context(), request); err != nil {
 		a.logger.Error("desire-app-failed", err)
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
+	fmt.Println("DESIRE DONE AND ALL GOOOD")
 
 	w.WriteHeader(http.StatusAccepted)
 }
 
-func (a *App) List(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+func (a *App) List(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 	desiredLRPSchedulingInfos, err := a.bifrost.List(r.Context())
 	if err != nil {
 		a.logger.Error("list-apps-failed", err)
@@ -74,7 +76,9 @@ func (a *App) List(w http.ResponseWriter, r *http.Request, ps httprouter.Params)
 
 func (a *App) GetApp(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 	processGUID := ps.ByName("process_guid")
-	desiredLRP := a.bifrost.GetApp(r.Context(), processGUID)
+	version := r.URL.Query().Get("version")
+
+	desiredLRP := a.bifrost.GetApp(r.Context(), fmt.Sprintf("%s-%s", processGUID, version))
 	if desiredLRP == nil {
 		w.WriteHeader(http.StatusNotFound)
 		return
@@ -107,14 +111,14 @@ func (a *App) Update(w http.ResponseWriter, r *http.Request, ps httprouter.Param
 		return
 	}
 
-	guid := ps.ByName("process_guid")
-	if guid != request.ProcessGuid {
-		a.logger.Error("process-guid-mismatch", nil, lager.Data{"update-app-process-guid": request.ProcessGuid})
-		err := writeUpdateErrorResponse(w, errors.New("Process guid missmatch"), http.StatusBadRequest)
-		a.logError("Could not write response", err)
+	// guid := ps.ByName("process_guid")
+	// if guid != request.ProcessGuid {
+	// 	a.logger.Error("process-guid-mismatch", nil, lager.Data{"update-app-process-guid": request.ProcessGuid})
+	// 	err := writeUpdateErrorResponse(w, errors.New("Process guid missmatch"), http.StatusBadRequest)
+	// 	a.logError("Could not write response", err)
 
-		return
-	}
+	// 	return
+	// }
 
 	if err := a.bifrost.Update(r.Context(), request); err != nil {
 		a.logger.Error("update-app-failed", err)
@@ -125,9 +129,9 @@ func (a *App) Update(w http.ResponseWriter, r *http.Request, ps httprouter.Param
 
 func (a *App) Stop(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 	processGUID := ps.ByName("process_guid")
-	if len(processGUID) > 36 {
-		processGUID = processGUID[:36]
-	}
+	// if len(processGUID) > 36 {
+	// 	processGUID = processGUID[:36]
+	// }
 
 	err := a.bifrost.Stop(r.Context(), processGUID)
 	if err != nil {
@@ -138,7 +142,8 @@ func (a *App) Stop(w http.ResponseWriter, r *http.Request, ps httprouter.Params)
 
 func (a *App) GetInstances(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 	guid := ps.ByName("process_guid")
-	instances, err := a.bifrost.GetInstances(r.Context(), guid)
+	version := r.URL.Query().Get("version")
+	instances, err := a.bifrost.GetInstances(r.Context(), fmt.Sprintf("%s-%s", guid, version))
 	response := a.createGetInstancesResponse(guid, instances, err)
 
 	err = json.NewEncoder(w).Encode(response)

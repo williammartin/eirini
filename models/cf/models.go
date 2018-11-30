@@ -22,7 +22,8 @@ type VcapApp struct {
 }
 
 type DesireLRPRequest struct {
-	ProcessGUID             string                      `json:"process_guid"`
+	GUID                    string                      `json:"guid"`
+	Version                 string                      `json:"version"`
 	DockerImageURL          string                      `json:"docker_image"`
 	DropletHash             string                      `json:"droplet_hash"`
 	DropletGUID             string                      `json:"droplet_guid"`

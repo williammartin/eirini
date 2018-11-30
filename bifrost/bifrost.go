@@ -19,11 +19,13 @@ type Bifrost struct {
 }
 
 func (b *Bifrost) Transfer(ctx context.Context, request cf.DesireLRPRequest) error {
+	fmt.Println("APP DESIRED")
 	desiredLRP, err := b.Converter.Convert(request)
 	if err != nil {
 		b.Logger.Error("failed-to-convert-request", err, lager.Data{"desire-lrp-request": request})
 		return err
 	}
+	fmt.Println("DESIRING")
 	return b.Desirer.Desire(&desiredLRP)
 }
 
