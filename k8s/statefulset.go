@@ -10,6 +10,7 @@ import (
 	"code.cloudfoundry.org/eirini/opi"
 	"k8s.io/api/apps/v1beta2"
 	"k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
 	meta "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	types "k8s.io/client-go/kubernetes/typed/apps/v1beta2"
@@ -194,6 +195,7 @@ func statefulSetsToLRPs(statefulSets *v1beta2.StatefulSetList) []*opi.LRP {
 }
 
 func statefulSetToLRP(s *v1beta2.StatefulSet) *opi.LRP {
+	memory := s.Spec.Template.Spec.Containers[0].Resources.Requests.Memory().ScaledValue(resource.Mega)
 	return &opi.LRP{
 		Name:             s.Name,
 		Image:            s.Spec.Template.Spec.Containers[0].Image,
@@ -205,6 +207,7 @@ func statefulSetToLRP(s *v1beta2.StatefulSet) *opi.LRP {
 			cf.VcapAppUris:          s.Annotations[cf.VcapAppUris],
 			eirini.RegisteredRoutes: s.Annotations[cf.VcapAppUris],
 		},
+		MemoryMB: memory,
 	}
 }
 
@@ -241,7 +244,10 @@ func (m *StatefulSetDesirer) toStatefulSet(lrp *opi.LRP) *v1beta2.StatefulSet {
 
 	livenessProbe := m.LivenessProbeCreator(lrp)
 	readinessProbe := m.ReadinessProbeCreator(lrp)
-
+	memory, err := resource.ParseQuantity(fmt.Sprintf("%dM", lrp.MemoryMB))
+	if err != nil {
+		panic(err)
+	}
 	statefulSet := &v1beta2.StatefulSet{
 		Spec: v1beta2.StatefulSetSpec{
 			Replicas: int32ptr(lrp.TargetInstances),
@@ -262,6 +268,14 @@ func (m *StatefulSetDesirer) toStatefulSet(lrp *opi.LRP) *v1beta2.StatefulSet {
 								{
 									Name:          "expose",
 									ContainerPort: 8080,
+								},
+							},
+							Resources: v1.ResourceRequirements{
+								Limits: v1.ResourceList{
+									v1.ResourceMemory: memory,
+								},
+								Requests: v1.ResourceList{
+									v1.ResourceMemory: memory,
 								},
 							},
 							LivenessProbe:  livenessProbe,

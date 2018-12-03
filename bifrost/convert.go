@@ -74,6 +74,7 @@ func (c *DropletToImageConverter) Convert(request cf.DesireLRPRequest) (opi.LRP,
 			cf.ProcessGUID: request.ProcessGUID,
 			cf.LastUpdated: request.LastUpdated,
 		},
+		MemoryMB: request.MemoryMB,
 	}, nil
 }
 
