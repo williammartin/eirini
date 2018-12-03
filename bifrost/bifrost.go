@@ -105,9 +105,10 @@ func (b *Bifrost) GetInstances(ctx context.Context, guid string) ([]*cf.Instance
 	cfInstances := make([]*cf.Instance, 0, len(opiInstances))
 	for _, i := range opiInstances {
 		cfInstances = append(cfInstances, &cf.Instance{
-			Since: i.Since,
-			Index: i.Index,
-			State: i.State,
+			Since:          i.Since,
+			Index:          i.Index,
+			State:          i.State,
+			PlacementError: i.PlacementError,
 		})
 	}
 
