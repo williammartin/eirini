@@ -8,6 +8,7 @@ import (
 	"code.cloudfoundry.org/bbs/models"
 	"code.cloudfoundry.org/eirini"
 	"code.cloudfoundry.org/eirini/models/cf"
+	"code.cloudfoundry.org/eirini/opi"
 	"code.cloudfoundry.org/lager"
 	"github.com/gogo/protobuf/jsonpb"
 	"github.com/julienschmidt/httprouter"
@@ -75,10 +76,11 @@ func (a *App) List(w http.ResponseWriter, r *http.Request, _ httprouter.Params) 
 }
 
 func (a *App) GetApp(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
-	processGUID := ps.ByName("process_guid")
-	version := r.URL.Query().Get("version")
-
-	desiredLRP := a.bifrost.GetApp(r.Context(), fmt.Sprintf("%s-%s", processGUID, version))
+	identifier := opi.LRPIdentifier{
+		GUID:    ps.ByName("process_guid"),
+		Version: ps.ByName("version_guid"),
+	}
+	desiredLRP := a.bifrost.GetApp(r.Context(), identifier)
 	if desiredLRP == nil {
 		w.WriteHeader(http.StatusNotFound)
 		return
@@ -101,7 +103,7 @@ func (a *App) GetApp(w http.ResponseWriter, r *http.Request, ps httprouter.Param
 }
 
 func (a *App) Update(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
-	var request models.UpdateDesiredLRPRequest
+	var request cf.UpdateDesiredLRPRequest
 	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
 		a.logger.Error("json-decoding-failure", err)
 		err = writeUpdateErrorResponse(w, err, http.StatusBadRequest)
@@ -111,15 +113,6 @@ func (a *App) Update(w http.ResponseWriter, r *http.Request, ps httprouter.Param
 		return
 	}
 
-	// guid := ps.ByName("process_guid")
-	// if guid != request.ProcessGuid {
-	// 	a.logger.Error("process-guid-mismatch", nil, lager.Data{"update-app-process-guid": request.ProcessGuid})
-	// 	err := writeUpdateErrorResponse(w, errors.New("Process guid missmatch"), http.StatusBadRequest)
-	// 	a.logError("Could not write response", err)
-
-	// 	return
-	// }
-
 	if err := a.bifrost.Update(r.Context(), request); err != nil {
 		a.logger.Error("update-app-failed", err)
 		err = writeUpdateErrorResponse(w, err, http.StatusInternalServerError)
@@ -128,12 +121,11 @@ func (a *App) Update(w http.ResponseWriter, r *http.Request, ps httprouter.Param
 }
 
 func (a *App) Stop(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
-	processGUID := ps.ByName("process_guid")
-	// if len(processGUID) > 36 {
-	// 	processGUID = processGUID[:36]
-	// }
-
-	err := a.bifrost.Stop(r.Context(), processGUID)
+	identifier := opi.LRPIdentifier{
+		GUID:    ps.ByName("process_guid"),
+		Version: ps.ByName("version_guid"),
+	}
+	err := a.bifrost.Stop(r.Context(), identifier)
 	if err != nil {
 		a.logError("stop-app-failed", err)
 		w.WriteHeader(http.StatusInternalServerError)
@@ -141,10 +133,12 @@ func (a *App) Stop(w http.ResponseWriter, r *http.Request, ps httprouter.Params)
 }
 
 func (a *App) GetInstances(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
-	guid := ps.ByName("process_guid")
-	version := r.URL.Query().Get("version")
-	instances, err := a.bifrost.GetInstances(r.Context(), fmt.Sprintf("%s-%s", guid, version))
-	response := a.createGetInstancesResponse(guid, instances, err)
+	identifier := opi.LRPIdentifier{
+		GUID:    ps.ByName("process_guid"),
+		Version: ps.ByName("version_guid"),
+	}
+	instances, err := a.bifrost.GetInstances(r.Context(), identifier)
+	response := a.createGetInstancesResponse(identifier.NotSureWhatToCallThis(), instances, err)
 
 	err = json.NewEncoder(w).Encode(response)
 	if err != nil {

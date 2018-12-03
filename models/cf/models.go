@@ -1,6 +1,6 @@
 package cf
 
-import "encoding/json"
+import "code.cloudfoundry.org/bbs/models"
 
 const (
 	VcapAppName   = "application_name"
@@ -22,20 +22,25 @@ type VcapApp struct {
 }
 
 type DesireLRPRequest struct {
-	GUID                    string                      `json:"guid"`
-	Version                 string                      `json:"version"`
-	DockerImageURL          string                      `json:"docker_image"`
-	DropletHash             string                      `json:"droplet_hash"`
-	DropletGUID             string                      `json:"droplet_guid"`
-	StartCommand            string                      `json:"start_command"`
-	Environment             map[string]string           `json:"environment"`
-	NumInstances            int                         `json:"instances"`
-	LastUpdated             string                      `json:"last_updated"`
-	HealthCheckType         string                      `json:"health_check_type"`
-	HealthCheckHTTPEndpoint string                      `json:"health_check_http_endpoint"`
-	HealthCheckTimeoutMs    uint                        `json:"health_check_timeout_ms"`
-	Ports                   []int32                     `json:"ports"`
-	Routes                  map[string]*json.RawMessage `json:"routes"`
+	GUID                    string            `json:"guid"`
+	Version                 string            `json:"version"`
+	ProcessGUID             string            `json:"process_guid"`
+	DockerImageURL          string            `json:"docker_image"`
+	DropletHash             string            `json:"droplet_hash"`
+	DropletGUID             string            `json:"droplet_guid"`
+	StartCommand            string            `json:"start_command"`
+	Environment             map[string]string `json:"environment"`
+	NumInstances            int               `json:"instances"`
+	LastUpdated             string            `json:"last_updated"`
+	HealthCheckType         string            `json:"health_check_type"`
+	HealthCheckHTTPEndpoint string            `json:"health_check_http_endpoint"`
+	HealthCheckTimeoutMs    uint              `json:"health_check_timeout_ms"`
+}
+
+type UpdateDesiredLRPRequest struct {
+	models.UpdateDesiredLRPRequest
+	GUID    string `json:"guid"`
+	Version string `json:"version"`
 }
 
 type GetInstancesResponse struct {

@@ -9,21 +9,24 @@ import (
 	"code.cloudfoundry.org/eirini/launcher"
 	"code.cloudfoundry.org/eirini/models/cf"
 	"code.cloudfoundry.org/eirini/opi"
+	"code.cloudfoundry.org/eirini/util"
 	"code.cloudfoundry.org/lager"
 )
 
 type DropletToImageConverter struct {
 	cfClient    eirini.CfClient
 	client      *http.Client
+	hasher      util.Hasher
 	logger      lager.Logger
 	registryURL string
 	registryIP  string
 }
 
-func NewConverter(cfClient eirini.CfClient, client *http.Client, logger lager.Logger, registryIP, registryURL string) *DropletToImageConverter {
+func NewConverter(cfClient eirini.CfClient, client *http.Client, hasher util.Hasher, logger lager.Logger, registryIP, registryURL string) *DropletToImageConverter {
 	return &DropletToImageConverter{
 		cfClient:    cfClient,
 		client:      client,
+		hasher:      hasher,
 		logger:      logger,
 		registryURL: registryURL,
 		registryIP:  registryIP,
@@ -53,8 +56,15 @@ func (c *DropletToImageConverter) Convert(request cf.DesireLRPRequest) (opi.LRP,
 
 	lev := launcher.SetupEnv(request.StartCommand)
 
+	identifier := opi.LRPIdentifier{
+		GUID:    request.GUID,
+		Version: request.Version,
+		Hasher:  c.hasher,
+	}
+
 	return opi.LRP{
-		Name:            request.GUID,
+		Name:            identifier.Name(), // TODO derive the name in LRP?
+		LRPIdentifier:   identifier,
 		Image:           request.DockerImageURL,
 		TargetInstances: request.NumInstances,
 		Command: []string{

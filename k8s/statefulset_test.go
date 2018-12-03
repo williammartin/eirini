@@ -114,17 +114,19 @@ var _ = Describe("Statefulset", func() {
 
 	Context("When getting an app", func() {
 
-		var lrp *opi.LRP
+		var (
+			expectedLRP *opi.LRP
+			actualLRP   *opi.LRP
+		)
 
 		BeforeEach(func() {
-			for _, l := range lrps {
-				_, createErr := client.AppsV1beta2().StatefulSets(namespace).Create(toStatefulSet(l))
-				Expect(createErr).ToNot(HaveOccurred())
-			}
+			expectedLRP = createLRP("Baldur", "1234.5", "my.example.route")
+			_, createErr := client.AppsV1beta2().StatefulSets(namespace).Create(toStatefulSet(expectedLRP))
+			Expect(createErr).ToNot(HaveOccurred())
 		})
 
 		JustBeforeEach(func() {
-			lrp, err = statefulSetDesirer.Get("odin")
+			actualLRP, err = statefulSetDesirer.Get(opi.LRPIdentifier{GUID: "guid_1234", Version: "version_1234"})
 		})
 
 		It("should not fail", func() {
@@ -132,12 +134,12 @@ var _ = Describe("Statefulset", func() {
 		})
 
 		It("return the expected LRP", func() {
-			Expect(lrps).To(ContainElement(lrp))
+			Expect(expectedLRP).To(Equal(actualLRP))
 		})
 
 		Context("when the app does not exist", func() {
 			JustBeforeEach(func() {
-				lrp, err = statefulSetDesirer.Get("non-existent")
+				_, err = statefulSetDesirer.Get(opi.LRPIdentifier{GUID: "idontknow", Version: "42"})
 			})
 
 			It("should return an error", func() {
@@ -147,7 +149,7 @@ var _ = Describe("Statefulset", func() {
 		})
 	})
 
-	Context("When updating an app", func() {
+	FContext("When updating an app", func() {
 		Context("when the app exists", func() {
 
 			var (
@@ -180,6 +182,7 @@ var _ = Describe("Statefulset", func() {
 				})
 
 				It("scales the app without error", func() {
+					Fail("just do it")
 					Expect(err).ToNot(HaveOccurred())
 				})
 
@@ -293,7 +296,7 @@ var _ = Describe("Statefulset", func() {
 		})
 
 		It("deletes the statefulSet", func() {
-			err = statefulSetDesirer.Stop("odin")
+			err = statefulSetDesirer.Stop(opi.LRPIdentifier{})
 			Expect(err).ToNot(HaveOccurred())
 
 			Eventually(listStatefulSets, timeout).Should(HaveLen(2))
@@ -303,7 +306,7 @@ var _ = Describe("Statefulset", func() {
 		Context("when the statefulSet does not exist", func() {
 
 			JustBeforeEach(func() {
-				err = statefulSetDesirer.Stop("test-app-where-are-you")
+				err = statefulSetDesirer.Stop(opi.LRPIdentifier{})
 			})
 
 			It("returns an error", func() {
@@ -334,7 +337,7 @@ var _ = Describe("Statefulset", func() {
 			_, err = client.CoreV1().Pods(namespace).Create(pod2)
 			Expect(err).ToNot(HaveOccurred())
 
-			instances, err = statefulSetDesirer.GetInstances("odin")
+			instances, err = statefulSetDesirer.GetInstances(opi.LRPIdentifier{})
 		})
 
 		It("should not return an error", func() {
@@ -356,7 +359,7 @@ var _ = Describe("Statefulset", func() {
 			})
 
 			JustBeforeEach(func() {
-				instances, err = statefulSetDesirer.GetInstances("mimir")
+				instances, err = statefulSetDesirer.GetInstances(opi.LRPIdentifier{})
 			})
 
 			It("should not return an error", func() {
@@ -528,18 +531,20 @@ func toStatefulSet(lrp *opi.LRP) *v1beta2.StatefulSet {
 
 	statefulSet.Namespace = namespace
 	statefulSet.Spec.Template.Labels = map[string]string{
-		"name": lrp.Name,
+		"guid":    lrp.GUID,
+		"version": lrp.Version,
 	}
 
 	statefulSet.Spec.Selector = &meta.LabelSelector{
 		MatchLabels: map[string]string{
-			"name": lrp.Name,
+			"guid":    lrp.GUID,
+			"version": lrp.Version,
 		},
 	}
 
 	statefulSet.Labels = map[string]string{
-		"eirini": "eirini",
-		"name":   lrp.Name,
+		"guid":    lrp.GUID,
+		"version": lrp.Version,
 	}
 
 	statefulSet.Annotations = lrp.Metadata
@@ -550,6 +555,10 @@ func toStatefulSet(lrp *opi.LRP) *v1beta2.StatefulSet {
 
 func createLRP(processGUID, lastUpdated, routes string) *opi.LRP {
 	return &opi.LRP{
+		LRPIdentifier: opi.LRPIdentifier{
+			GUID:    "guid_1234",
+			Version: "version_1234",
+		},
 		Name: processGUID,
 		Command: []string{
 			"/bin/sh",
@@ -563,6 +572,8 @@ func createLRP(processGUID, lastUpdated, routes string) *opi.LRP {
 			cf.ProcessGUID: processGUID,
 			cf.LastUpdated: lastUpdated,
 			cf.VcapAppUris: routes,
+			cf.VcapAppID:   "guid_1234",
+			cf.VcapVersion: "version_1234",
 		},
 	}
 }
