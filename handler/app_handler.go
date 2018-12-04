@@ -2,7 +2,6 @@ package handler
 
 import (
 	"encoding/json"
-	"fmt"
 	"net/http"
 
 	"code.cloudfoundry.org/bbs/models"
@@ -23,8 +22,7 @@ type App struct {
 	logger  lager.Logger
 }
 
-func (a *App) Desire(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
-	fmt.Println("STARTED DESIRE IN APP HANDLER")
+func (a *App) Desire(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 	var request cf.DesireLRPRequest
 	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
 		a.logger.Error("request-body-decoding-failed", err)
@@ -32,19 +30,11 @@ func (a *App) Desire(w http.ResponseWriter, r *http.Request, ps httprouter.Param
 		return
 	}
 
-	// processGUID := ps.ByName("process_guid")
-	// if processGUID != request.ProcessGUID {
-	// 	a.logger.Error("process-guid-mismatch", nil, lager.Data{"desired-app-process-guid": request.ProcessGUID})
-	// 	w.WriteHeader(http.StatusBadRequest)
-	// 	return
-	// }
-
 	if err := a.bifrost.Transfer(r.Context(), request); err != nil {
 		a.logger.Error("desire-app-failed", err)
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
-	fmt.Println("DESIRE DONE AND ALL GOOOD")
 
 	w.WriteHeader(http.StatusAccepted)
 }

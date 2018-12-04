@@ -63,7 +63,7 @@ func (c *DropletToImageConverter) Convert(request cf.DesireLRPRequest) (opi.LRP,
 	}
 
 	return opi.LRP{
-		Name:            identifier.Name(), // TODO derive the name in LRP?
+		Name:            identifier.Name(),
 		LRPIdentifier:   identifier,
 		Image:           request.DockerImageURL,
 		TargetInstances: request.NumInstances,
@@ -82,7 +82,7 @@ func (c *DropletToImageConverter) Convert(request cf.DesireLRPRequest) (opi.LRP,
 			cf.VcapAppName: vcap.AppName,
 			cf.VcapAppID:   vcap.AppID,
 			cf.VcapVersion: vcap.Version,
-			cf.ProcessGUID: fmt.Sprintf("%s-%s", request.GUID, request.Version),
+			cf.ProcessGUID: request.ProcessGUID,
 			cf.VcapAppUris: string(routesJson),
 			cf.LastUpdated: request.LastUpdated,
 		},

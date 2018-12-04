@@ -19,13 +19,11 @@ type Bifrost struct {
 }
 
 func (b *Bifrost) Transfer(ctx context.Context, request cf.DesireLRPRequest) error {
-	fmt.Println("APP DESIRED")
 	desiredLRP, err := b.Converter.Convert(request)
 	if err != nil {
 		b.Logger.Error("failed-to-convert-request", err, lager.Data{"desire-lrp-request": request})
 		return err
 	}
-	fmt.Println("DESIRING")
 	return b.Desirer.Desire(&desiredLRP)
 }
 
@@ -67,7 +65,7 @@ func (b *Bifrost) Update(ctx context.Context, update cf.UpdateDesiredLRPRequest)
 	lrp.TargetInstances = int(*update.Update.Instances)
 	lrp.Metadata[cf.LastUpdated] = *update.Update.Annotation
 
-	routes, err := getRoutes(update)
+	routes, err := getURIs(update)
 	if err != nil {
 		return err
 	}
@@ -114,7 +112,7 @@ func (b *Bifrost) GetInstances(ctx context.Context, identifier opi.LRPIdentifier
 	return cfInstances, nil
 }
 
-func getURIs(update cf.UpdateDesiredLRPRequest) ([]string, error) {
+func getURIs(update cf.UpdateDesiredLRPRequest) (string, error) {
 	if !routesAvailable(update.Update.Routes) {
 		return "", nil
 	}

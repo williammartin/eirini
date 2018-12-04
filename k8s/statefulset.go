@@ -47,30 +47,22 @@ func (m *StatefulSetDesirer) List() ([]*opi.LRP, error) {
 }
 
 func (m *StatefulSetDesirer) Stop(identifier opi.LRPIdentifier) error {
+	statefulSet, err := m.getStatefulSet(identifier)
+	if err != nil {
+		return err
+	}
+
 	backgroundPropagation := meta.DeletePropagationBackground
-	return m.statefulSets().Delete(identifier.GUID, &meta.DeleteOptions{PropagationPolicy: &backgroundPropagation})
+	return m.statefulSets().Delete(statefulSet.Name, &meta.DeleteOptions{PropagationPolicy: &backgroundPropagation})
 }
 
 func (m *StatefulSetDesirer) Desire(lrp *opi.LRP) error {
-	fmt.Printf("in desire, desiring %+v \n", lrp)
-	_, err := m.statefulSets().Get(lrp.Name, meta.GetOptions{})
-	if err != nil {
-		_, err = m.statefulSets().Create(m.toStatefulSet(lrp))
-		fmt.Println("in desire, after desiring", err)
-		return err
-	}
-
-	if err := m.Stop(lrp.Name); err != nil {
-		fmt.Println("failed to stop app")
-		return err
-	}
-	_, err = m.statefulSets().Create(m.toStatefulSet(lrp))
-	fmt.Println("after creating ", err)
+	_, err := m.statefulSets().Create(m.toStatefulSet(lrp))
 	return err
 }
 
 func (m *StatefulSetDesirer) Update(lrp *opi.LRP) error {
-	statefulSet, err := m.statefulSets().Get(lrp.Name, meta.GetOptions{})
+	statefulSet, err := m.getStatefulSet(opi.LRPIdentifier{GUID: lrp.GUID, Version: lrp.Version})
 	if err != nil {
 		return err
 	}
@@ -110,7 +102,7 @@ func (m *StatefulSetDesirer) getStatefulSet(identifier opi.LRPIdentifier) (*v1be
 }
 
 func (m *StatefulSetDesirer) GetInstances(identifier opi.LRPIdentifier) ([]*opi.Instance, error) {
-	options := meta.ListOptions{LabelSelector: fmt.Sprintf("name=%s", identifier.GUID)}
+	options := meta.ListOptions{LabelSelector: fmt.Sprintf("guid=%s,version=%s", identifier.GUID, identifier.Version)}
 	pods, err := m.Client.CoreV1().Pods(m.Namespace).List(options)
 	if err != nil {
 		return []*opi.Instance{}, err
@@ -295,8 +287,6 @@ func (m *StatefulSetDesirer) toStatefulSet(lrp *opi.LRP) *v1beta2.StatefulSet {
 
 	statefulSet.Annotations = lrp.Metadata
 	statefulSet.Annotations[eirini.RegisteredRoutes] = lrp.Metadata[cf.VcapAppUris]
-
-	fmt.Println("STATEFULSET CONSTRUCTED")
 
 	return statefulSet
 }
