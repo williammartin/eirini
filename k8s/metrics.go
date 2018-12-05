@@ -27,6 +27,11 @@ type PodMetrics struct {
 type Metadata struct {
 	Name      string `json:"name"`
 	Namespace string `json:"namespace"`
+	Labels    Labels `json:"labels"`
+}
+
+type Labels struct {
+	GUID string `json:"guid"`
 }
 
 type Container struct {
@@ -54,6 +59,7 @@ func NewMetricsCollector(work chan []metrics.Message, scheduler route.TaskSchedu
 }
 
 func (c *MetricsCollector) Start() {
+	fmt.Println("Metrics Collector Started")
 	c.scheduler.Schedule(func() error {
 		metricList, err := collectMetrics(c.source)
 		if err != nil {
@@ -67,6 +73,7 @@ func (c *MetricsCollector) Start() {
 		}
 
 		if len(messages) > 0 {
+			fmt.Println("Metrics Collector>>>>>> send work")
 			c.work <- messages
 		}
 
@@ -77,16 +84,19 @@ func (c *MetricsCollector) Start() {
 func collectMetrics(source string) (*PodMetricsList, error) {
 	resp, err := http.Get(source)
 	if err != nil {
+		fmt.Println("Get failed!")
 		return nil, err
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode >= 300 {
+		fmt.Println("with statuscode > 300!")
 		return nil, fmt.Errorf("metrics source responded with code: %d", resp.StatusCode)
 	}
 
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
+		fmt.Println("error reading body")
 		return nil, err
 	}
 
@@ -101,8 +111,9 @@ func convertMetricsList(metricList *PodMetricsList) ([]metrics.Message, error) {
 		if len(metric.Containers) == 0 {
 			continue
 		}
+		fmt.Println("METRIC:", metric)
 		container := metric.Containers[0]
-		appID, indexID, err := parsePodName(metric.Metadata.Name)
+		_, indexID, err := parsePodName(metric.Metadata.Name)
 		if err != nil {
 			return nil, err
 		}
@@ -116,7 +127,7 @@ func convertMetricsList(metricList *PodMetricsList) ([]metrics.Message, error) {
 		}
 
 		messages = append(messages, metrics.Message{
-			AppID:       appID,
+			AppID:       metric.Metadata.Labels.GUID,
 			IndexID:     indexID,
 			CPU:         convertCPU(cpuValue),
 			Memory:      convertMemory(memoryValue),

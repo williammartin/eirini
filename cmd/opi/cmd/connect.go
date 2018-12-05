@@ -46,6 +46,7 @@ var connectCmd = &cobra.Command{
 }
 
 func connect(cmd *cobra.Command, args []string) {
+	fmt.Println("The debug version")
 	path, err := cmd.Flags().GetString("config")
 	exitWithError(err)
 

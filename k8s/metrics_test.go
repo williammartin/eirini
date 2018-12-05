@@ -13,7 +13,7 @@ import (
 	"code.cloudfoundry.org/eirini/route/routefakes"
 )
 
-var _ = Describe("Metrics", func() {
+var _ = FDescribe("Metrics", func() {
 
 	var (
 		collector      *MetricsCollector
@@ -51,7 +51,10 @@ var _ = Describe("Metrics", func() {
 	"metadata": {"name": "thor-9000", "namespace": "asgard"},
 	"items": [
 		{
-			"metadata": {"name": "thor-9000", "namespace": "asgard"},
+			"metadata": {"name": "thor-9000", "namespace": "asgard", "labels": {
+	  "guid": "app-guid"
+	}
+},
 			"containers": [{
 				"name": "bran-the-builder-9000",
 				"usage": {"cpu": "420000m", "memory": "420Ki"}
@@ -78,7 +81,7 @@ var _ = Describe("Metrics", func() {
 		It("should send the received metrics", func() {
 			Eventually(work).Should(Receive(Equal([]metrics.Message{
 				{
-					AppID:       "thor",
+					AppID:       "app-guid",
 					IndexID:     "9000",
 					CPU:         420,
 					Memory:      430080,
@@ -116,7 +119,10 @@ var _ = Describe("Metrics", func() {
 	"metadata": {"name": "thor-9000", "namespace": "asgard"},
 	"items": [
 		{
-			"metadata": {"name": "thor-9000", "namespace": "asgard"},
+			"metadata": {"name": "thor-9000", "namespace": "asgard", "labels": {
+	  "guid": "app-guid"
+	}
+},
 			"containers": []
 		}
 	]
@@ -139,7 +145,10 @@ var _ = Describe("Metrics", func() {
 	"metadata": {"name": "thor-9000", "namespace": "asgard"},
 	"items": [
 		{
-			"metadata": {"name": "thor-9000", "namespace": "asgard"},
+			"metadata": {"name": "thor-9000", "namespace": "asgard", "labels": {
+	  "guid": "app-guid"
+	}
+},
 			"containers": [{
 				"name": "bran-the-builder-9000",
 				"usage": {"cpu": "420000m", "memory": "420"}
@@ -156,7 +165,7 @@ var _ = Describe("Metrics", func() {
 			It("should send the received metrics", func() {
 				Eventually(work).Should(Receive(Equal([]metrics.Message{
 					{
-						AppID:       "thor",
+						AppID:       "app-guid",
 						IndexID:     "9000",
 						CPU:         420,
 						Memory:      430080,
@@ -175,7 +184,10 @@ var _ = Describe("Metrics", func() {
 	"metadata": {"name": "thor-thunder0", "namespace": "asgard"},
 	"items": [
 		{
-			"metadata": {"name": "thor-thunder0", "namespace": "asgard"},
+			"metadata": {"name": "thor-thunder0", "namespace": "asgard", "labels": {
+	  "guid": "app-guid"
+	}
+},
 			"containers": [{
 				"name": "bran-the-builder",
 				"usage": {"cpu": "420000m", "memory": "420M"}
@@ -192,7 +204,7 @@ var _ = Describe("Metrics", func() {
 			It("should send the received metrics", func() {
 				Eventually(work).Should(Receive(Equal([]metrics.Message{
 					{
-						AppID:       "thor",
+						AppID:       "app-guid",
 						IndexID:     "0",
 						CPU:         420,
 						Memory:      430080,
