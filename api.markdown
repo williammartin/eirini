@@ -10,6 +10,10 @@
 GET /apps
 ```
 
+Request body:
+
+`<empty>`
+
 Response codes:
 
 * `200`: All right
@@ -127,24 +131,21 @@ PUT /apps/:process_guid/:version_guid/stop
 
 Request parameters:
 
-* ``: 
+* `process_guid`: Uniquely identifies the app to be desired
+* `version_guid`: Version of the app
 
 Request body:
 
-```json
-{
-}
-```
+`<empty>`
 
 Response codes:
 
-* ``: 
+* `200`: OK
+* `500`: Stopping the app failed
 
 Response body:
 
 `<empty>`
-
-TODO: 
 
 ## Get instances of an app
 
@@ -154,24 +155,34 @@ GET /apps/:process_guid/:version_guid/instances
 
 Request parameters:
 
-* ``: 
+* `process_guid`: Uniquely identifies the app to be desired
+* `version_guid`: Version of the app
 
 Request body:
 
-```json
-{
-}
-```
+`<empty>`
 
 Response codes:
 
-* ``: 
+* `200`: OK
+* `500`: Encoding the response failed or getting the instances failed
 
 Response body:
 
-`<empty>`
+```json
+{
+    "process_guid": "<guid>-<version>",
+	"error": "some error message",
+	"instances": [{
+	       "index": 11,
+	       "since": 42,
+	       "state": "running"
+	   }
+	]
+}
+```
 
-TODO: 
+TODO: Check design of error response body
 
 ## Get an app
 
