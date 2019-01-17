@@ -192,24 +192,32 @@ GET /apps/:process_guid/:version_guid
 
 Request parameters:
 
-* ``: 
+* `process_guid`: Uniquely identifies the app to be desired
+* `version_guid`: Version of the app
 
 Request body:
 
-```json
-{
-}
-```
+`<empty>`
 
 Response codes:
 
-* ``: 
+* `200`: OK
+* `404`: App is not found
+* `500`: Encoding the response failed or getting the instances failed
 
 Response body:
 
-`<empty>`
+```json
+{
+    "error": "",
+        "desired_lrp": {
+            "process_guid": "<guid>-<version>",
+            "instances": 5
+        }
+}
+```
 
-TODO: 
+TODO: check if process_guid is not garbage. I think that we currently return k8s-specific hash, while we should be returning <guid>-<version>
 
 # Staging
 
@@ -221,12 +229,21 @@ POST /stage/:staging_guid
 
 Request parameters:
 
-* ``: 
+* `staging_guid`: Unique identifier for staging
 
 Request body:
 
 ```json
 {
+    "app_id": "maybe",
+    "log_guid": "",
+    "lifecycle_data": "{ \"app_bits_download_uri\": \"uri\", \"droplet_upload_uri\": \"uri\", \"buildpacks\": [{ \"name\": \"some-name\", \"key\": \"some-key\", \"url\": \"some-url\", \"skip_detect\": true  }] }",
+    "completion_callback": "call-me-maybe",
+    "environment": [{
+            "name": "foo",
+            "value": "bar"
+        }
+    ]
 }
 ```
 
