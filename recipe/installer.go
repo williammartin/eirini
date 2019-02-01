@@ -43,6 +43,10 @@ func (d *PackageInstaller) download(appID string, filepath string) error {
 	defer file.Close()
 
 	appBits, err := d.fetchAppBits(appID)
+	if err != nil {
+		return err
+	}
+
 	defer appBits.Close()
 
 	_, err = io.Copy(file, appBits)
@@ -54,11 +58,14 @@ func (d *PackageInstaller) download(appID string, filepath string) error {
 }
 
 func (d *PackageInstaller) fetchAppBits(appID string) (io.ReadCloser, error) {
-	path, _ := url.Parse("/v2/apps/" + appID + "/download")
+	path, err := url.Parse("/v2/apps/" + appID + "/download")
+	if err != nil {
+		return nil, errors.Wrap(err, fmt.Sprintf("%s is not a legal app ID", appID))
+	}
+
 	url := d.ServerURL.ResolveReference(path)
 
 	resp, err := d.Client.Get(url.String())
-
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to perform request")
 	}
