@@ -13,22 +13,21 @@ import (
 )
 
 type PackageInstaller struct {
-	ServerURL *url.URL
 	Client    *http.Client
 	Extractor eirini.Extractor
 }
 
-func (d *PackageInstaller) Install(appID string, targetDir string) error {
-	if appID == "" {
-		return errors.New("empty appID provided")
-	}
-
+func (d *PackageInstaller) Install(downloadURL URL, targetDir string) error {
 	if targetDir == "" {
 		return errors.New("empty targetDir provided")
 	}
 
+	// To: Monday Mario & Steffen
+	// consider using a TempDir to store the zip file
+	// or if posible (preferably) unpack directly from the
+	// download stream
 	zipPath := filepath.Join(targetDir, appID) + ".zip"
-	if err := d.download(appID, zipPath); err != nil {
+	if err := d.download(downloadURL, zipPath); err != nil {
 		return err
 	}
 

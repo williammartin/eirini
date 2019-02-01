@@ -17,6 +17,7 @@ func main() {
 	stagingGUID := os.Getenv(eirini.EnvStagingGUID)
 	completionCallback := os.Getenv(eirini.EnvCompletionCallback)
 	eiriniAddress := os.Getenv(eirini.EnvEiriniAddress)
+	appBitsDownloadURL := os.Getenv(eirini.EnvDownloadURL)
 	dropletUploadURL := os.Getenv(eirini.EnvDropletUploadURL)
 	buildpacks := os.Getenv(eirini.EnvBuildpacks)
 
@@ -24,20 +25,14 @@ func main() {
 	password := os.Getenv(eirini.EnvCfPassword)
 	apiAddress := os.Getenv(eirini.EnvAPIAddress)
 
-	cfg := &cfclient.Config{
-		Username:   username,
-		Password:   password,
-		ApiAddress: apiAddress,
-		HttpClient: createAPIHTTPClient(),
-	}
+	httpClient: createAPIHTTPClient(),
 
-	cfclient, err := cfclient.NewClient(cfg)
 	if err != nil {
 		fmt.Println("Failed to create cf client", err.Error())
 		os.Exit(1)
 	}
 
-	installer := &recipe.PackageInstaller{Cfclient: cfclient, Extractor: &recipe.Unzipper{}}
+	installer := &recipe.PackageInstaller{AppBitsDownloadURL: appBitsDownloadURL, Client: httpClient, Extractor: &recipe.Unzipper{}}
 	uploader := &recipe.DropletUploader{
 		HTTPClient: createUploaderHTTPClient(),
 	}
