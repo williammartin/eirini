@@ -22,11 +22,13 @@ func (d *PackageInstaller) Install(downloadURL URL, targetDir string) error {
 		return errors.New("empty targetDir provided")
 	}
 
-	// To: Monday Mario & Steffen
-	// consider using a TempDir to store the zip file
-	// or if posible (preferably) unpack directly from the
-	// download stream
-	zipPath := filepath.Join(targetDir, appID) + ".zip"
+	zipPath, err := ioutil.TempFile("", "app.zip")
+	if err != nil {
+		return err
+	}
+
+	defer os.Remove(zipPath.Name())
+
 	if err := d.download(downloadURL, zipPath); err != nil {
 		return err
 	}
