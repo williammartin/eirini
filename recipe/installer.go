@@ -3,10 +3,9 @@ package recipe
 import (
 	"fmt"
 	"io"
+	"io/ioutil"
 	"net/http"
-	"net/url"
 	"os"
-	"path/filepath"
 
 	"code.cloudfoundry.org/eirini"
 	"github.com/pkg/errors"
@@ -17,7 +16,7 @@ type PackageInstaller struct {
 	Extractor eirini.Extractor
 }
 
-func (d *PackageInstaller) Install(downloadURL URL, targetDir string) error {
+func (d *PackageInstaller) Install(downloadURL, targetDir string) error {
 	if targetDir == "" {
 		return errors.New("empty targetDir provided")
 	}
@@ -29,11 +28,11 @@ func (d *PackageInstaller) Install(downloadURL URL, targetDir string) error {
 
 	defer os.Remove(zipPath.Name())
 
-	if err := d.download(downloadURL, zipPath); err != nil {
+	if err := d.download(downloadURL, zipPath.Name()); err != nil {
 		return err
 	}
 
-	return d.Extractor.Extract(zipPath, targetDir)
+	return d.Extractor.Extract(zipPath.Name(), targetDir)
 }
 
 func (d *PackageInstaller) download(appID string, filepath string) error {
@@ -58,15 +57,8 @@ func (d *PackageInstaller) download(appID string, filepath string) error {
 	return nil
 }
 
-func (d *PackageInstaller) fetchAppBits(appID string) (io.ReadCloser, error) {
-	path, err := url.Parse("/v2/apps/" + appID + "/download")
-	if err != nil {
-		return nil, errors.Wrap(err, fmt.Sprintf("%s is not a legal app ID", appID))
-	}
-
-	url := d.ServerURL.ResolveReference(path)
-
-	resp, err := d.Client.Get(url.String())
+func (d *PackageInstaller) fetchAppBits(url string) (io.ReadCloser, error) {
+	resp, err := d.Client.Get(url)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to perform request")
 	}
