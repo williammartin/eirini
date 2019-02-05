@@ -9,7 +9,6 @@ import (
 	"code.cloudfoundry.org/eirini"
 	"code.cloudfoundry.org/eirini/recipe"
 	"code.cloudfoundry.org/eirini/util"
-	"github.com/JulzDiverse/cfclient"
 )
 
 func main() {
@@ -21,21 +20,15 @@ func main() {
 	dropletUploadURL := os.Getenv(eirini.EnvDropletUploadURL)
 	buildpacks := os.Getenv(eirini.EnvBuildpacks)
 
-	username := os.Getenv(eirini.EnvCfUsername)
-	password := os.Getenv(eirini.EnvCfPassword)
-	apiAddress := os.Getenv(eirini.EnvAPIAddress)
-
-	httpClient: createAPIHTTPClient(),
-
-	if err != nil {
-		fmt.Println("Failed to create cf client", err.Error())
-		os.Exit(1)
+	installer := &recipe.PackageInstaller{
+		Client:    createDownloadHTTPClient(),
+		Extractor: &recipe.Unzipper{},
 	}
 
-	installer := &recipe.PackageInstaller{AppBitsDownloadURL: appBitsDownloadURL, Client: httpClient, Extractor: &recipe.Unzipper{}}
 	uploader := &recipe.DropletUploader{
 		HTTPClient: createUploaderHTTPClient(),
 	}
+
 	commander := &recipe.IOCommander{
 		Stdout: os.Stdout,
 		Stderr: os.Stderr,
@@ -65,8 +58,10 @@ func main() {
 		CompletionCallback: completionCallback,
 		EiriniAddr:         eiriniAddress,
 		DropletUploadURL:   dropletUploadURL,
+		PackageDownloadURL: appBitsDownloadURL,
 	}
-	err = executor.ExecuteRecipe(recipeConf)
+
+	err := executor.ExecuteRecipe(recipeConf)
 	if err != nil {
 		fmt.Println("Error while executing staging recipe:", err.Error())
 		os.Exit(1)
@@ -90,19 +85,13 @@ func createUploaderHTTPClient() *http.Client {
 	return client
 }
 
-func createAPIHTTPClient() *http.Client {
-	apiCert := filepath.Join(eirini.CCCertsMountPath, eirini.CCAPICertName)
+func createDownloadHTTPClient() *http.Client {
 	apiCA := filepath.Join(eirini.CCCertsMountPath, eirini.CCInternalCACertName)
-	apiKey := filepath.Join(eirini.CCCertsMountPath, eirini.CCAPIKeyName)
-
-	uaaCert := filepath.Join(eirini.CCCertsMountPath, eirini.UAACertName)
-	uaaCA := filepath.Join(eirini.CCCertsMountPath, eirini.UAAInternalCACertName)
-	uaaKey := filepath.Join(eirini.CCCertsMountPath, eirini.UAAKeyName)
 
 	client, err := util.CreateTLSHTTPClient([]util.CertPaths{
-		{Crt: apiCert, Key: apiKey, Ca: apiCA},
-		{Crt: uaaCert, Key: uaaKey, Ca: uaaCA},
+		{Ca: apiCA},
 	})
+
 	if err != nil {
 		panic(err)
 	}
