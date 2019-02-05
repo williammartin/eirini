@@ -3,7 +3,6 @@ package recipe
 import (
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"os"
 
@@ -16,33 +15,31 @@ type PackageInstaller struct {
 	Extractor eirini.Extractor
 }
 
-func (d *PackageInstaller) Install(downloadURL, targetDir string) error {
+func (d *PackageInstaller) Install(downloadURL, zipPath, targetDir string) error {
+	if downloadURL == "" {
+		return errors.New("empty downloadURL provided")
+	}
+
 	if targetDir == "" {
 		return errors.New("empty targetDir provided")
 	}
 
-	zipPath, err := ioutil.TempFile("", "app.zip")
+	err := d.download(downloadURL, zipPath)
 	if err != nil {
 		return err
 	}
 
-	defer os.Remove(zipPath.Name())
-
-	if err := d.download(downloadURL, zipPath.Name()); err != nil {
-		return err
-	}
-
-	return d.Extractor.Extract(zipPath.Name(), targetDir)
+	return d.Extractor.Extract(zipPath, targetDir)
 }
 
-func (d *PackageInstaller) download(appID string, filepath string) error {
+func (d *PackageInstaller) download(downloadURL string, filepath string) error {
 	file, err := os.Create(filepath)
 	if err != nil {
 		return err
 	}
 	defer file.Close()
 
-	appBits, err := d.fetchAppBits(appID)
+	appBits, err := d.fetchAppBits(downloadURL)
 	if err != nil {
 		return err
 	}

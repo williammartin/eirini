@@ -1,9 +1,12 @@
 package recipe_test
 
 import (
+	"archive/zip"
+	"bytes"
 	"errors"
+	"io/ioutil"
 	"net/http"
-	"os"
+	"path/filepath"
 
 	"code.cloudfoundry.org/eirini/eirinifakes"
 	. "code.cloudfoundry.org/eirini/recipe"
@@ -14,7 +17,6 @@ import (
 )
 
 var _ = Describe("PackageInstaller", func() {
-
 	var (
 		err         error
 		downloadURL string
@@ -22,24 +24,37 @@ var _ = Describe("PackageInstaller", func() {
 		installer   Installer
 		server      *ghttp.Server
 		extractor   *eirinifakes.FakeExtractor
+		zipPath     string
 	)
 
 	BeforeEach(func() {
-		targetDir = "testdata"
+		zippedPackage, err := makeZippedPackage()
+		Expect(err).ToNot(HaveOccurred())
+
 		extractor = new(eirinifakes.FakeExtractor)
-		server = ghttp.NewServer()
 		installer = &PackageInstaller{Client: &http.Client{}, Extractor: extractor}
+
+		server = ghttp.NewServer()
 		server.AppendHandlers(
 			ghttp.CombineHandlers(
-				ghttp.VerifyRequest("GET", "/app-guid"),
-				ghttp.RespondWith(http.StatusOK, "appbits"),
+				ghttp.VerifyRequest("GET", "/some-app-guid"),
+				ghttp.RespondWith(http.StatusOK, zippedPackage),
 			),
 		)
-		downloadURL = server.URL() + "/app-guid"
+		downloadURL = server.URL() + "/some-app-guid"
+
+		targetDir, err = ioutil.TempDir("", "targetDir")
+		Expect(err).ToNot(HaveOccurred())
+
+		packageDir, err := ioutil.TempDir("", "package")
+		Expect(err).ToNot(HaveOccurred())
+		zipPath = filepath.Join(packageDir, "app.zip")
+
+		Expect(err).ToNot(HaveOccurred())
 	})
 
 	JustBeforeEach(func() {
-		err = installer.Install(downloadURL, targetDir)
+		err = installer.Install(downloadURL, zipPath, targetDir)
 	})
 
 	AfterEach(func() {
@@ -54,15 +69,20 @@ var _ = Describe("PackageInstaller", func() {
 
 	assertExtractorInteractions := func() {
 		It("should use the extractor to extract the zip file", func() {
-			src, actualTargetDir := extractor.ExtractArgsForCall(0)
+			_, actualTargetDir := extractor.ExtractArgsForCall(0)
 			Expect(extractor.ExtractCallCount()).To(Equal(1))
 			// Expect(src).To(Equal(zipFilePath))
 			Expect(actualTargetDir).To(Equal(targetDir))
 		})
 	}
 
-	Context("When package is installed successfully", func() {
-		FIt("writes the ZIP file contents to the target directory", func() {
+	Context("package is installed successfully", func() {
+		It("succeeds", func() {
+			Expect(err).ToNot(HaveOccurred())
+		})
+
+		It("writes the ZIP file to the given temp directory", func() {
+			Expect(zipPath).To(BeAnExistingFile())
 		})
 	})
 
@@ -107,7 +127,7 @@ var _ = Describe("PackageInstaller", func() {
 
 		Context("When the server does not return OK HTTP status", func() {
 			BeforeEach(func() {
-				server.RouteToHandler("GET", "/v2/apps/"+downloadURL+"/download",
+				server.RouteToHandler("GET", "/some-app-guid",
 					ghttp.RespondWith(http.StatusTeapot, nil),
 				)
 			})
@@ -124,11 +144,6 @@ var _ = Describe("PackageInstaller", func() {
 			BeforeEach(func() {
 				expectedErrorMessage = "failed to extract zip"
 				extractor.ExtractReturns(errors.New(expectedErrorMessage))
-			})
-
-			AfterEach(func() {
-				osError := os.Remove(zipFilePath)
-				Expect(osError).ToNot(HaveOccurred())
 			})
 
 			assertExtractorInteractions()
@@ -148,9 +163,24 @@ var _ = Describe("PackageInstaller", func() {
 			})
 
 			It("should return the right error message", func() {
-				Expect(err).To(MatchError(ContainSubstring("not a legal app ID")))
+				Expect(err).To(MatchError(ContainSubstring("failed to perform request")))
 				Expect(err).To(MatchError(ContainSubstring(downloadURL)))
 			})
 		})
 	})
 })
+
+// straight from https://golang.org/pkg/archive/zip/#example_Writer
+func makeZippedPackage() ([]byte, error) {
+	buf := bytes.Buffer{}
+	w := zip.NewWriter(&buf)
+
+	// the ZIP file is intentionally left empty
+
+	err := w.Close()
+	if err != nil {
+		return nil, err
+	}
+
+	return buf.Bytes(), nil
+}
