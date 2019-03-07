@@ -1,28 +1,27 @@
 package recipe
 
 import (
-	"errors"
 	"fmt"
 	"io/ioutil"
 	"net/http"
+
+	"github.com/pkg/errors"
 )
 
 type Buildpack struct {
 	Name string
-	Key string
-	Url string
-	SkipDetect bool
+	Key  string
+	Url  string
 }
 
-type BuildpackInstaller struct {
-	Client    *http.Client
+type BuildpackManager struct {
+	Client *http.Client
 }
 
-func (b *BuildpackInstaller) OpenUrl(buildpack *Buildpack) ([]byte, error) {
-
-	resp, err := b.Client.Get(buildpack.Url)
+func OpenBuildpackUrl(buildpack *Buildpack, client *http.Client) ([]byte, error) {
+	resp, err := client.Get(buildpack.Url)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "failed to request buildpack")
 	}
 
 	if resp.StatusCode != http.StatusOK {

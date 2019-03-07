@@ -8,36 +8,32 @@ import (
 	"net/http"
 )
 
-var _ = Describe("BuildpackInstaller", func() {
+var _ = Describe("BuildpackManager", func() {
 
 	var (
-		buildpack Buildpack
-		server *ghttp.Server
+		buildpack       Buildpack
+		server          *ghttp.Server
 		responseContent string
-		downloadURL string
-		buildpackInstaller BuildpackInstaller
-		actualBytes []byte
-		expectedBytes []byte
-		err error
+		downloadURL     string
+		actualBytes     []byte
+		expectedBytes   []byte
+		err             error
+		client          *http.Client
 	)
 
 	Context("when a buildpack URL is given", func() {
-
 		BeforeEach(func() {
-			buildpackInstaller = BuildpackInstaller{
-				Client: http.DefaultClient,
-			}
+			client = http.DefaultClient
 			server = ghttp.NewServer()
 		})
 
 		JustBeforeEach(func() {
 			expectedBytes = []byte(responseContent)
-			actualBytes, err = buildpackInstaller.OpenUrl(&buildpack)
+			actualBytes, err = OpenBuildpackUrl(&buildpack, client)
 		})
 
 		Context("and it is a valid URL", func() {
 			BeforeEach(func() {
-
 				responseContent = "the content"
 
 				server.AppendHandlers(
@@ -50,15 +46,13 @@ var _ = Describe("BuildpackInstaller", func() {
 
 				buildpack = Buildpack{
 					Name: "custom",
-					Key: "some_key",
-					Url: downloadURL,
-					SkipDetect: true,
+					Key:  "some_key",
+					Url:  downloadURL,
 				}
 			})
 
-
 			It("should not fail", func() {
-				Expect(err).To(BeNil())
+				Expect(err).ToNot(HaveOccurred())
 			})
 
 			It("it downloads the buildpack contents", func() {
@@ -67,25 +61,25 @@ var _ = Describe("BuildpackInstaller", func() {
 		})
 
 		Context("and it is NOT a valid url", func() {
-
 			BeforeEach(func() {
 				buildpack = Buildpack{
 					Name: "custom",
-					Key: "some_key",
-					Url: "___terrible::::__url",
-					SkipDetect: true,
+					Key:  "some_key",
+					Url:  "___terrible::::__url",
 				}
 			})
 
 			It("should fail", func() {
-				Expect(err).ToNot(BeNil())
+				Expect(err).To(HaveOccurred())
+			})
+
+			It("should return a meaningful error message", func() {
+				Expect(err).To(MatchError(ContainSubstring("failed to request buildpack")))
 			})
 		})
 
 		Context("and it is an unresponsive url", func() {
-
 			BeforeEach(func() {
-
 				server.AppendHandlers(
 					ghttp.CombineHandlers(
 						ghttp.VerifyRequest("GET", "/buildpack"),
@@ -95,14 +89,17 @@ var _ = Describe("BuildpackInstaller", func() {
 
 				buildpack = Buildpack{
 					Name: "custom",
-					Key: "some_key",
-					Url: server.URL() + "/buildpack",
-					SkipDetect: true,
+					Key:  "some_key",
+					Url:  server.URL() + "/buildpack",
 				}
 			})
 
 			It("should fail", func() {
-				Expect(err).ToNot(BeNil())
+				Expect(err).To(HaveOccurred())
+			})
+
+			It("should return a meaningful error message", func() {
+				Expect(err).To(MatchError(ContainSubstring("downloading buildpack failed with status code")))
 			})
 		})
 	})
