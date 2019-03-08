@@ -68,7 +68,6 @@ var _ = Describe("Buildpackmanager", func() {
 	})
 
 	Context("When a list of Buildpacks needs be installed", func() {
-
 		JustBeforeEach(func() {
 			err = buildpackManager.Install(buildpacks)
 		})
@@ -94,21 +93,17 @@ var _ = Describe("Buildpackmanager", func() {
 			Expect(err).ToNot(HaveOccurred())
 
 			var actualBuildpacks []recipe.Buildpack
-			err = json.Unmarshal(actualBytes, actualBuildpacks)
+			err = json.Unmarshal(actualBytes, &actualBuildpacks)
 			Expect(err).ToNot(HaveOccurred())
 
 			Expect(actualBuildpacks).To(Equal(buildpacks))
 		})
-
-		//TODO Write Test that zip was extracted
 	})
 })
 
 func makeZippedPackage() ([]byte, error) {
 	buf := bytes.Buffer{}
 	w := zip.NewWriter(&buf)
-
-	//TODO: Add Content to Zip
 
 	err := w.Close()
 	if err != nil {

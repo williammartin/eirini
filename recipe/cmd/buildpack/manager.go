@@ -38,7 +38,7 @@ func (b *BuildpackManager) Install(buildpacks []recipe.Buildpack) error {
 	return b.writeBuildpackJson(buildpacks)
 }
 
-func (b* BuildpackManager) install(buildpack recipe.Buildpack) (err error) {
+func (b *BuildpackManager) install(buildpack recipe.Buildpack) (err error) {
 
 	var bytes []byte
 	bytes, err = recipe.OpenBuildpackUrl(&buildpack, b.client)
@@ -64,7 +64,7 @@ func (b* BuildpackManager) install(buildpack recipe.Buildpack) (err error) {
 
 	buildpackName := fmt.Sprintf("%x", md5.Sum([]byte(buildpack.Name)))
 	buildpackPath := filepath.Join(b.buildpackDir, buildpackName)
-	err = os.MkdirAll(buildpackPath, 0x777)
+	err = os.MkdirAll(buildpackPath, 0777)
 	if err != nil {
 		return err
 	}
@@ -78,13 +78,12 @@ func (b* BuildpackManager) install(buildpack recipe.Buildpack) (err error) {
 }
 
 func (b *BuildpackManager) writeBuildpackJson(buildpacks []recipe.Buildpack) error {
-
 	bytes, err := json.Marshal(buildpacks)
 	if err != nil {
 		return err
 	}
 
-	err = ioutil.WriteFile(filepath.Join(b.buildpackDir, configFileName), bytes, 0x644)
+	err = ioutil.WriteFile(filepath.Join(b.buildpackDir, configFileName), bytes, 0644)
 	if err != nil {
 		return err
 	}
