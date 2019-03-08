@@ -9,9 +9,8 @@ RUN mkdir -p /packs
 
 COPY builder /packs/
 COPY recipe /packs/
-COPY entry.sh /packs/entry.sh
 
 ENTRYPOINT [ \
-  "/packs/entry.sh" \
+  "/packs/recipe" \
 ]
 
