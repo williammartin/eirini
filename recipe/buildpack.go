@@ -14,10 +14,6 @@ type Buildpack struct {
 	Url  string
 }
 
-type BuildpackManager struct {
-	Client *http.Client
-}
-
 func OpenBuildpackUrl(buildpack *Buildpack, client *http.Client) ([]byte, error) {
 	resp, err := client.Get(buildpack.Url)
 	if err != nil {

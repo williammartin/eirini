@@ -4,6 +4,7 @@ import (
 	"archive/zip"
 	"bytes"
 	"crypto/md5"
+	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -66,26 +67,40 @@ var _ = Describe("Buildpackmanager", func() {
 		}
 	})
 
-	Context("When a list of Buildpacks is provided", func() {
-		Context("and the buildpacks need be installed", func() {
+	Context("When a list of Buildpacks needs be installed", func() {
 
-			JustBeforeEach(func() {
-				err = buildpackManager.Install(buildpacks)
-			})
-
-			It("should not fail", func() {
-				Expect(err).ToNot(HaveOccurred())
-			})
-
-			It("should download all buildpacks to the given directory", func() {
-				myMd5Dir := fmt.Sprintf("%x", md5.Sum([]byte("my_buildpack")))
-				yourMd5Dir := fmt.Sprintf("%x", md5.Sum([]byte("your_buildpack")))
-				Expect(filepath.Join(buildpackDir, myMd5Dir)).To(BeADirectory())
-				Expect(filepath.Join(buildpackDir, yourMd5Dir)).To(BeADirectory())
-			})
-
-			//TODO Write Test that zip was extracted
+		JustBeforeEach(func() {
+			err = buildpackManager.Install(buildpacks)
 		})
+
+		It("should not fail", func() {
+			Expect(err).ToNot(HaveOccurred())
+		})
+
+		It("should download all buildpacks to the given directory", func() {
+			myMd5Dir := fmt.Sprintf("%x", md5.Sum([]byte("my_buildpack")))
+			yourMd5Dir := fmt.Sprintf("%x", md5.Sum([]byte("your_buildpack")))
+			Expect(filepath.Join(buildpackDir, myMd5Dir)).To(BeADirectory())
+			Expect(filepath.Join(buildpackDir, yourMd5Dir)).To(BeADirectory())
+		})
+
+		It("should write a config.json file in the correct location", func() {
+			Expect(filepath.Join(buildpackDir, "config.json")).To(BeAnExistingFile())
+		})
+
+		It("marshals the provided buildpacks to the config.json", func() {
+			var actualBytes []byte
+			actualBytes, err = ioutil.ReadFile(filepath.Join(buildpackDir, "config.json"))
+			Expect(err).ToNot(HaveOccurred())
+
+			var actualBuildpacks []recipe.Buildpack
+			err = json.Unmarshal(actualBytes, actualBuildpacks)
+			Expect(err).ToNot(HaveOccurred())
+
+			Expect(actualBuildpacks).To(Equal(buildpacks))
+		})
+
+		//TODO Write Test that zip was extracted
 	})
 })
 

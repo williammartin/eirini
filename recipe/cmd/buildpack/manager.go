@@ -2,14 +2,18 @@ package buildpack
 
 import (
 	"crypto/md5"
+	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"net/http"
 	"os"
 	"path/filepath"
+	"time"
 
 	"code.cloudfoundry.org/eirini/recipe"
 )
+
+const configFileName = "config.json"
 
 type BuildpackManager struct {
 	client       *http.Client
@@ -26,37 +30,64 @@ func New(client *http.Client, buildpackDir string) *BuildpackManager {
 
 func (b *BuildpackManager) Install(buildpacks []recipe.Buildpack) error {
 	for _, buildpack := range buildpacks {
-		bytes, err := recipe.OpenBuildpackUrl(&buildpack, b.client)
-		if err != nil {
-			return err
-		}
-
-		tmp, err := ioutil.TempFile("", "buildpack.zip")
-		if err != nil {
-			return err
-		}
-
-		err = ioutil.WriteFile(tmp.Name(), bytes, os.ModePerm)
-		if err != nil {
-			return err
-		}
-
-		buildpackName := fmt.Sprintf("%x", md5.Sum([]byte(buildpack.Name)))
-		buildpackPath := filepath.Join(b.buildpackDir, buildpackName)
-		err = os.MkdirAll(buildpackPath, os.ModeDir)
-		if err != nil {
-			return err
-		}
-
-		//unpack-zip
-		err = b.unzipper.Extract(tmp.Name(), buildpackPath)
-		if err != nil {
+		if err := b.install(buildpack); err != nil {
 			return err
 		}
 	}
-	return nil
+
+	return b.writeBuildpackJson(buildpacks)
 }
 
-func (b *BuildpackManager) WriteBuildpackJson(buildpacks []recipe.Buildpack) error {
+func (b* BuildpackManager) install(buildpack recipe.Buildpack) (err error) {
+
+	var bytes []byte
+	bytes, err = recipe.OpenBuildpackUrl(&buildpack, b.client)
+	if err != nil {
+		return err
+	}
+
+	var tempDirName string
+	tempDirName, err = ioutil.TempDir("", "buildpacks")
+	if err != nil {
+		return err
+	}
+
+	fileName := filepath.Join(tempDirName, fmt.Sprintf("buildback-%d-.zip", time.Now().Nanosecond()))
+	defer func() {
+		err = os.Remove(fileName)
+	}()
+
+	err = ioutil.WriteFile(fileName, bytes, os.ModePerm)
+	if err != nil {
+		return err
+	}
+
+	buildpackName := fmt.Sprintf("%x", md5.Sum([]byte(buildpack.Name)))
+	buildpackPath := filepath.Join(b.buildpackDir, buildpackName)
+	err = os.MkdirAll(buildpackPath, 0x777)
+	if err != nil {
+		return err
+	}
+
+	err = b.unzipper.Extract(fileName, buildpackPath)
+	if err != nil {
+		return err
+	}
+
+	return err
+}
+
+func (b *BuildpackManager) writeBuildpackJson(buildpacks []recipe.Buildpack) error {
+
+	bytes, err := json.Marshal(buildpacks)
+	if err != nil {
+		return err
+	}
+
+	err = ioutil.WriteFile(filepath.Join(b.buildpackDir, configFileName), bytes, 0x644)
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
