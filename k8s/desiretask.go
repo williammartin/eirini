@@ -77,13 +77,9 @@ func (d *TaskDesirer) toStagingJob(task *opi.Task) *batch.Job {
 }
 
 func toJob(task *opi.Task) *batch.Job {
-
-	var backoffLimit int32 = 0
-
 	job := &batch.Job{
 		Spec: batch.JobSpec{
 			ActiveDeadlineSeconds: int64ptr(ActiveDeadlineSeconds),
-			BackoffLimit: &backoffLimit,
 			Template: v1.PodTemplateSpec{
 				Spec: v1.PodSpec{
 					Containers: []v1.Container{{
