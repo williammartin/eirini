@@ -25,8 +25,7 @@ func main() {
 	buildpacksJson := os.Getenv(eirini.EnvBuildpacks)
 
 	downloadClient := createDownloadHTTPClient()
-
-	buildPackManager := buildpack.New(downloadClient, buildPacksDir)
+	buildPackManager := buildpack.New(downloadClient, http.DefaultClient, buildPacksDir)
 
 	installer := &recipe.PackageInstaller{
 		Client:    downloadClient,

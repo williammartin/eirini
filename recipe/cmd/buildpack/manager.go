@@ -4,6 +4,7 @@ import (
 	"crypto/md5"
 	"encoding/json"
 	"fmt"
+	"github.com/pkg/errors"
 	"io/ioutil"
 	"net/http"
 	"os"
@@ -16,14 +17,16 @@ import (
 const configFileName = "config.json"
 
 type BuildpackManager struct {
-	client       *http.Client
+	internalClient       *http.Client
+	defaultClient    *http.Client
 	buildpackDir string
 	unzipper     recipe.Unzipper
 }
 
-func New(client *http.Client, buildpackDir string) *BuildpackManager {
+func New(internalClient *http.Client, defaultClient *http.Client, buildpackDir string) *BuildpackManager {
 	return &BuildpackManager{
-		client:       client,
+		internalClient:       internalClient,
+		defaultClient: defaultClient,
 		buildpackDir: buildpackDir,
 	}
 }
@@ -41,9 +44,13 @@ func (b *BuildpackManager) Install(buildpacks []recipe.Buildpack) error {
 func (b *BuildpackManager) install(buildpack recipe.Buildpack) (err error) {
 
 	var bytes []byte
-	bytes, err = recipe.OpenBuildpackUrl(&buildpack, b.client)
+	bytes, err = recipe.OpenBuildpackUrl(&buildpack, b.internalClient)
 	if err != nil {
-		return err
+		var err2 error
+		bytes, err2 = recipe.OpenBuildpackUrl(&buildpack, b.defaultClient)
+		if err2 != nil {
+			return errors.Wrap(err, fmt.Sprintf("default client also failed: %s", err2.Error()))
+		}
 	}
 
 	var tempDirName string

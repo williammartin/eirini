@@ -10,7 +10,7 @@ import (
 
 type Unzipper struct{}
 
-func (u *Unzipper) Extract(src, targetDir string) (err error) {
+func (u *Unzipper) Extract(src, targetDir string) error {
 	if targetDir == "" {
 		return errors.New("target directory cannot be empty")
 	}
@@ -19,9 +19,7 @@ func (u *Unzipper) Extract(src, targetDir string) (err error) {
 	if err != nil {
 		return err
 	}
-	defer func() {
-		err = reader.Close()
-	}()
+	defer reader.Close()
 
 	for _, file := range reader.File {
 		destPath := filepath.Join(filepath.Clean(targetDir), filepath.Clean(file.Name))
@@ -43,7 +41,7 @@ func (u *Unzipper) Extract(src, targetDir string) (err error) {
 
 func extractFile(src *zip.File, destPath string) error {
 	parentDir := filepath.Dir(destPath)
-	if err := os.MkdirAll(parentDir, 0750); err != nil {
+	if err := os.MkdirAll(parentDir, 0755); err != nil {
 		return err
 	}
 
@@ -63,6 +61,5 @@ func extractFile(src *zip.File, destPath string) error {
 		return err
 	}
 
-	err = os.Chmod(destPath, src.Mode())
-	return err
+	return destFile.Chmod(src.Mode())
 }

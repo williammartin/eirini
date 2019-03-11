@@ -36,7 +36,7 @@ var _ = Describe("Buildpackmanager", func() {
 		buildpackDir, err = ioutil.TempDir("", "buildpacks")
 		Expect(err).ToNot(HaveOccurred())
 
-		buildpackManager = New(client, buildpackDir)
+		buildpackManager = New(client, client, buildpackDir)
 
 		responseContent, err = makeZippedPackage()
 		Expect(err).ToNot(HaveOccurred())
@@ -67,10 +67,11 @@ var _ = Describe("Buildpackmanager", func() {
 		}
 	})
 
+	JustBeforeEach(func() {
+		err = buildpackManager.Install(buildpacks)
+	})
+
 	Context("When a list of Buildpacks needs be installed", func() {
-		JustBeforeEach(func() {
-			err = buildpackManager.Install(buildpacks)
-		})
 
 		It("should not fail", func() {
 			Expect(err).ToNot(HaveOccurred())
@@ -97,6 +98,37 @@ var _ = Describe("Buildpackmanager", func() {
 			Expect(err).ToNot(HaveOccurred())
 
 			Expect(actualBuildpacks).To(Equal(buildpacks))
+		})
+	})
+
+	Context("When the buildpack url is invalid", func() {
+
+		BeforeEach(func() {
+
+			server = ghttp.NewServer()
+			server.AppendHandlers(
+				ghttp.CombineHandlers(
+					ghttp.VerifyRequest("GET", "/bad-buildpack"),
+					ghttp.RespondWith(http.StatusInternalServerError, responseContent),
+				),
+				ghttp.CombineHandlers(
+					ghttp.VerifyRequest("GET", "/bad-buildpack"),
+					ghttp.RespondWith(http.StatusInternalServerError, responseContent),
+				),
+			)
+
+			buildpacks = []recipe.Buildpack{
+				{
+					Name: "bad_buildpack",
+					Key:  "bad-key",
+					Url:  fmt.Sprintf("%s/bad-buildpack", server.URL()),
+				},
+			}
+		})
+
+		It("should try both http clients", func() {
+			Expect(err).To(HaveOccurred())
+			Expect(err).To(MatchError(ContainSubstring("default client also failed")))
 		})
 	})
 })
