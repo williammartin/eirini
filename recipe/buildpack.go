@@ -11,11 +11,11 @@ import (
 type Buildpack struct {
 	Name string `json:"name"`
 	Key  string `json:"key"`
-	Url  string `json:"url"`
+	URL  string `json:"url"`
 }
 
-func OpenBuildpackUrl(buildpack *Buildpack, client *http.Client) ([]byte, error) {
-	resp, err := client.Get(buildpack.Url)
+func OpenBuildpackURL(buildpack *Buildpack, client *http.Client) ([]byte, error) {
+	resp, err := client.Get(buildpack.URL)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to request buildpack")
 	}

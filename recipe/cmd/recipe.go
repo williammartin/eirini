@@ -1,7 +1,6 @@
 package main
 
 import (
-	"code.cloudfoundry.org/eirini/recipe/cmd/buildpack"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -10,6 +9,7 @@ import (
 
 	"code.cloudfoundry.org/eirini"
 	"code.cloudfoundry.org/eirini/recipe"
+	"code.cloudfoundry.org/eirini/recipe/cmd/buildpack"
 	"code.cloudfoundry.org/eirini/util"
 )
 
@@ -22,7 +22,7 @@ func main() {
 	eiriniAddress := os.Getenv(eirini.EnvEiriniAddress)
 	appBitsDownloadURL := os.Getenv(eirini.EnvDownloadURL)
 	dropletUploadURL := os.Getenv(eirini.EnvDropletUploadURL)
-	buildpacksJson := os.Getenv(eirini.EnvBuildpacks)
+	buildpacksJSON := os.Getenv(eirini.EnvBuildpacks)
 
 	downloadClient := createDownloadHTTPClient()
 	buildPackManager := buildpack.New(downloadClient, http.DefaultClient, buildPacksDir)
@@ -49,7 +49,7 @@ func main() {
 		OutputMetadataLocation:    "/out/result.json",
 	}
 
-	buildpacksKeyModifier := &recipe.BuildpacksKeyModifier{CCBuildpacksJSON: buildpacksJson}
+	buildpacksKeyModifier := &recipe.BuildpacksKeyModifier{CCBuildpacksJSON: buildpacksJSON}
 
 	executor := &recipe.PacksExecutor{
 		Conf:           packsConf,
@@ -69,13 +69,13 @@ func main() {
 	}
 
 	var buildpacks []recipe.Buildpack
-	err := json.Unmarshal([]byte(buildpacksJson), &buildpacks)
+	err := json.Unmarshal([]byte(buildpacksJSON), &buildpacks)
 	if err != nil {
 		fmt.Println(fmt.Sprintf("Error unmarshaling environment variable %s: %s", eirini.EnvBuildpacks, err.Error()))
 		os.Exit(1)
 	}
 
-	if err:= buildPackManager.Install(buildpacks); err != nil {
+	if err = buildPackManager.Install(buildpacks); err != nil {
 		fmt.Println("Error while installing buildpacks:", err.Error())
 		os.Exit(1)
 	}

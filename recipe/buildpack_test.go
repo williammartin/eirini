@@ -1,11 +1,12 @@
 package recipe_test
 
 import (
+	"net/http"
+
 	. "code.cloudfoundry.org/eirini/recipe"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/ghttp"
-	"net/http"
 )
 
 var _ = Describe("BuildpackManager", func() {
@@ -29,7 +30,7 @@ var _ = Describe("BuildpackManager", func() {
 
 		JustBeforeEach(func() {
 			expectedBytes = []byte(responseContent)
-			actualBytes, err = OpenBuildpackUrl(&buildpack, client)
+			actualBytes, err = OpenBuildpackURL(&buildpack, client)
 		})
 
 		Context("and it is a valid URL", func() {
@@ -47,7 +48,7 @@ var _ = Describe("BuildpackManager", func() {
 				buildpack = Buildpack{
 					Name: "custom",
 					Key:  "some_key",
-					Url:  downloadURL,
+					URL:  downloadURL,
 				}
 			})
 
@@ -65,7 +66,7 @@ var _ = Describe("BuildpackManager", func() {
 				buildpack = Buildpack{
 					Name: "custom",
 					Key:  "some_key",
-					Url:  "___terrible::::__url",
+					URL:  "___terrible::::__url",
 				}
 			})
 
@@ -90,7 +91,7 @@ var _ = Describe("BuildpackManager", func() {
 				buildpack = Buildpack{
 					Name: "custom",
 					Key:  "some_key",
-					Url:  server.URL() + "/buildpack",
+					URL:  server.URL() + "/buildpack",
 				}
 			})
 

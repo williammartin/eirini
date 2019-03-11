@@ -3,7 +3,6 @@ package recipe_test
 import (
 	"archive/zip"
 	"bytes"
-	"crypto/md5"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -23,7 +22,7 @@ var _ = Describe("Buildpackmanager", func() {
 	var (
 		client           *http.Client
 		buildpackDir     string
-		buildpackManager *BuildpackManager
+		buildpackManager *Manager
 		buildpacks       []recipe.Buildpack
 		server           *ghttp.Server
 		responseContent  []byte
@@ -57,12 +56,12 @@ var _ = Describe("Buildpackmanager", func() {
 			{
 				Name: "my_buildpack",
 				Key:  "my-key",
-				Url:  fmt.Sprintf("%s/my-buildpack", server.URL()),
+				URL:  fmt.Sprintf("%s/my-buildpack", server.URL()),
 			},
 			{
 				Name: "your_buildpack",
 				Key:  "your-key",
-				Url:  fmt.Sprintf("%s/your-buildpack", server.URL()),
+				URL:  fmt.Sprintf("%s/your-buildpack", server.URL()),
 			},
 		}
 	})
@@ -78,10 +77,8 @@ var _ = Describe("Buildpackmanager", func() {
 		})
 
 		It("should download all buildpacks to the given directory", func() {
-			myMd5Dir := fmt.Sprintf("%x", md5.Sum([]byte("my_buildpack")))
-			yourMd5Dir := fmt.Sprintf("%x", md5.Sum([]byte("your_buildpack")))
-			Expect(filepath.Join(buildpackDir, myMd5Dir)).To(BeADirectory())
-			Expect(filepath.Join(buildpackDir, yourMd5Dir)).To(BeADirectory())
+			Expect(filepath.Join(buildpackDir, "my_buildpack")).To(BeADirectory())
+			Expect(filepath.Join(buildpackDir, "your_buildpack")).To(BeADirectory())
 		})
 
 		It("should write a config.json file in the correct location", func() {
@@ -121,7 +118,7 @@ var _ = Describe("Buildpackmanager", func() {
 				{
 					Name: "bad_buildpack",
 					Key:  "bad-key",
-					Url:  fmt.Sprintf("%s/bad-buildpack", server.URL()),
+					URL:  fmt.Sprintf("%s/bad-buildpack", server.URL()),
 				},
 			}
 		})

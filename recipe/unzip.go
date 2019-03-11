@@ -25,13 +25,13 @@ func (u *Unzipper) Extract(src, targetDir string) error {
 		destPath := filepath.Join(filepath.Clean(targetDir), filepath.Clean(file.Name))
 
 		if file.FileInfo().IsDir() {
-			if err := os.MkdirAll(destPath, file.Mode()); err != nil {
+			if err = os.MkdirAll(destPath, file.Mode()); err != nil {
 				return err
 			}
 			continue
 		}
 
-		if err := extractFile(file, destPath); err != nil {
+		if err = extractFile(file, destPath); err != nil {
 			return err
 		}
 	}
