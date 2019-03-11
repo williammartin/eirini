@@ -9,9 +9,9 @@ import (
 )
 
 type Buildpack struct {
-	Name string
-	Key  string
-	Url  string
+	Name string `json:"name"`
+	Key  string `json:"key"`
+	Url  string `json:"url"`
 }
 
 func OpenBuildpackUrl(buildpack *Buildpack, client *http.Client) ([]byte, error) {
