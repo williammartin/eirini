@@ -3,6 +3,7 @@ package recipe_test
 import (
 	"archive/zip"
 	"bytes"
+	"crypto/md5"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -77,8 +78,10 @@ var _ = Describe("Buildpackmanager", func() {
 		})
 
 		It("should download all buildpacks to the given directory", func() {
-			Expect(filepath.Join(buildpackDir, "my_buildpack")).To(BeADirectory())
-			Expect(filepath.Join(buildpackDir, "your_buildpack")).To(BeADirectory())
+			myMd5Dir := fmt.Sprintf("%x", md5.Sum([]byte("my_buildpack")))
+			yourMd5Dir := fmt.Sprintf("%x", md5.Sum([]byte("your_buildpack")))
+			Expect(filepath.Join(buildpackDir, myMd5Dir)).To(BeADirectory())
+			Expect(filepath.Join(buildpackDir, yourMd5Dir)).To(BeADirectory())
 		})
 
 		It("should write a config.json file in the correct location", func() {

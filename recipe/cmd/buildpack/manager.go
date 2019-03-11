@@ -1,6 +1,7 @@
 package buildpack
 
 import (
+	"crypto/md5"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -68,7 +69,7 @@ func (b *Manager) install(buildpack recipe.Buildpack) (err error) {
 		return err
 	}
 
-	buildpackName := buildpack.Name
+	buildpackName := fmt.Sprintf("%x", md5.Sum([]byte(buildpack.Name)))
 	buildpackPath := filepath.Join(b.buildpackDir, buildpackName)
 	err = os.MkdirAll(buildpackPath, 0777)
 	if err != nil {
