@@ -1,0 +1,17 @@
+ARG stack
+FROM packs/cf
+
+# upload the droplet from a volume to the blobstore
+
+ARG buildpacks
+
+WORKDIR /workspace
+
+RUN mkdir -p /packs
+
+COPY uploader /packs/
+
+ENTRYPOINT [ \
+  "/packs/uploader" \
+]
+

@@ -1,0 +1,19 @@
+ARG stack
+FROM packs/cf
+
+# puts the app bits into a volume
+# install the buildpacks into /var/lib/buildpacks
+
+
+ARG buildpacks
+
+WORKDIR /workspace
+
+RUN mkdir -p /packs
+
+COPY downloader /packs/
+
+ENTRYPOINT [ \
+  "/packs/downloader" \
+]
+
