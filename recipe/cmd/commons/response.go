@@ -24,15 +24,23 @@ func RespondWithFailure(failure error) {
 	}
 }
 
-func RespondWithSuccess() {
+func RespondWithSuccess() error {
 	recipeConfig := RecipeConfig()
 
+	cbResponse, err := createSuccessResponse(RecipeConfig(), OutputMetadataLocation, BuildpackJson())
+	if err != nil {
+		return err
+	}
+
+	err = sendCompleteResponse(recipeConfig.EiriniAddr, cbResponse)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
-func createSuccessResponse(
-	outputMetadataLocation string,
-	buildpackJson string,
-) (*models.TaskCallbackResponse, error) {
+func createSuccessResponse(recipeConfig recipe.Config, outputMetadataLocation string, buildpackJson string) (*models.TaskCallbackResponse, error) {
 	stagingResult, err := getStagingResult(outputMetadataLocation)
 	if err != nil {
 		return nil, err
@@ -46,20 +54,20 @@ func createSuccessResponse(
 
 	result, err := json.Marshal(stagingResult)
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 
 	annotation := cc_messages.StagingTaskAnnotation{
-		CompletionCallback: recipeConf.CompletionCallback,
+		CompletionCallback: recipeConfig.CompletionCallback,
 	}
 
 	annotationJSON, err := json.Marshal(annotation)
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 
 	return &models.TaskCallbackResponse{
-		TaskGuid:   recipeConf.StagingGUID,
+		TaskGuid:   recipeConfig.StagingGUID,
 		Result:     string(result),
 		Failed:     false,
 		Annotation: string(annotationJSON),

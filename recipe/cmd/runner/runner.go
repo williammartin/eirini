@@ -23,7 +23,7 @@ func main() {
 	recipeConf := commons.RecipeConfig()
 	err := executor.ExecuteRecipe(recipeConf)
 	if err != nil {
-		respondWithFailure(err, recipeConf)
+		commons.RespondWithFailure(err)
 		os.Exit(1)
 	}
 

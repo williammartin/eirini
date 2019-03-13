@@ -18,20 +18,15 @@ func main() {
 		HTTPClient: createUploaderHTTPClient(),
 	}
 
-	recipeConfig := commons.RecipeConfig()
 	err := uploader.Upload(commons.OutputDropletLocation, dropletUploadURL)
 	if err != nil {
-		commons.RespondWithFailure(err, recipeConfig)
+		commons.RespondWithFailure(err)
 		os.Exit(1)
 	}
 
-	cbResponse, err := commons.CreateSuccessResponse(recipeConfig)
+	err = commons.RespondWithSuccess()
 	if err != nil {
-		os.Exit(1)
-	}
-
-	err = commons.SendCompleteResponse(recipeConfig.EiriniAddr, cbResponse)
-	if err != nil {
+		commons.RespondWithFailure(err)
 		os.Exit(1)
 	}
 }

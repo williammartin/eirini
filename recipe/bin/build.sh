@@ -20,8 +20,8 @@ main() {
 }
 
 build-binary() {
-  pushd "$BASEDIR/cmd"
-    GOOS=linux go build -a -o "$BASEDIR"/image/${1} ${1}.go client.go
+  pushd "${BASEDIR}/cmd/${1}"
+    GOOS=linux go build -a -o "$BASEDIR"/image/${1} *.go
   popd
 }
 
