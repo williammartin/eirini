@@ -66,13 +66,18 @@ func (d *TaskDesirer) toStagingJob(task *opi.Task) *batch.Job {
 		},
 	}
 
-	job.Spec.Template.Spec.Containers[0].VolumeMounts = []v1.VolumeMount{
+	volumeMounts := []v1.VolumeMount{
 		{
 			Name:      eirini.CCCertsVolumeName,
 			ReadOnly:  true,
 			MountPath: eirini.CCCertsMountPath,
 		},
 	}
+
+	// only the downloader and the uploader require cc-uploader certs
+	job.Spec.Template.Spec.Containers[0].VolumeMounts = volumeMounts
+	job.Spec.Template.Spec.Containers[2].VolumeMounts = volumeMounts
+
 	return job
 }
 
@@ -82,12 +87,26 @@ func toJob(task *opi.Task) *batch.Job {
 			ActiveDeadlineSeconds: int64ptr(ActiveDeadlineSeconds),
 			Template: v1.PodTemplateSpec{
 				Spec: v1.PodSpec{
-					Containers: []v1.Container{{
-						Name:            "opi-task",
-						Image:           task.Image,
-						ImagePullPolicy: v1.PullAlways,
-						Env:             MapToEnvVar(task.Env),
-					}},
+					Containers: []v1.Container{
+						{
+							Name:            "opi-task-downloader",
+							Image:           task.DownloaderImage,
+							ImagePullPolicy: v1.PullAlways,
+							Env:             MapToEnvVar(task.Env),
+						},
+						{
+							Name:            "opi-task-runner",
+							Image:           task.RunnerImage,
+							ImagePullPolicy: v1.PullAlways,
+							Env:             MapToEnvVar(task.Env),
+						},
+						{
+							Name:            "opi-task-uploader",
+							Image:           task.UploaderImage,
+							ImagePullPolicy: v1.PullAlways,
+							Env:             MapToEnvVar(task.Env),
+						},
+					},
 					RestartPolicy: v1.RestartPolicyNever,
 				},
 			},

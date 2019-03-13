@@ -70,9 +70,11 @@ type Healtcheck struct {
 // A Task is a one-off process that is run exactly once and returns a
 // result
 type Task struct {
-	Image   string
-	Command []string
-	Env     map[string]string
+	DownloaderImage string
+	UploaderImage   string
+	RunnerImage     string
+	Command         []string
+	Env             map[string]string
 }
 
 //go:generate counterfeiter . Desirer

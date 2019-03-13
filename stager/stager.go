@@ -62,8 +62,10 @@ func (s *Stager) createStagingTask(stagingGUID string, request cf.StagingRequest
 	stagingEnv := mergeEnvVriables(eiriniEnv, request.Environment)
 
 	stagingTask := &opi.Task{
-		Image: s.Config.Image,
-		Env:   stagingEnv,
+		DownloaderImage: s.Config.DownloaderImage,
+		UploaderImage:   s.Config.UploaderImage,
+		RunnerImage:     s.Config.RunnerImage,
+		Env:             stagingEnv,
 	}
 	return stagingTask, nil
 }

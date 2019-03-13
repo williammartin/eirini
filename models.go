@@ -47,7 +47,9 @@ type Properties struct {
 	CCCertsSecretName string `yaml:"cc_certs_secret_name"`
 	RegistryAddress   string `yaml:"registry_address"`
 	EiriniAddress     string `yaml:"eirini_address"`
-	StagerImage       string `yaml:"stager_image"`
+	DownloaderImage   string `yaml:"downloader_image"`
+	UploaderImage     string `yaml:"uploader_image"`
+	RunnerImage       string `yaml:"runner_image"`
 
 	MetricsSourceAddress string `yaml:"metrics_source_address"`
 	LoggregatorAddress   string `yaml:"loggregator_address"`
@@ -68,8 +70,10 @@ type Stager interface {
 }
 
 type StagerConfig struct {
-	EiriniAddress string
-	Image         string
+	EiriniAddress   string
+	DownloaderImage string
+	UploaderImage   string
+	RunnerImage     string
 }
 
 //go:generate counterfeiter . Extractor
