@@ -21,7 +21,7 @@ main() {
 
 build-binary() {
   pushd "$BASEDIR/cmd"
-    GOOS=linux go build -a -o "$BASEDIR"/image/downloader ${1}.go client.go
+    GOOS=linux go build -a -o "$BASEDIR"/image/${1} ${1}.go client.go
   popd
 }
 
@@ -31,9 +31,10 @@ build-packs-builder() {
   popd
 }
 
+# TODO: cleanup build image and build args
 build-image() {
   pushd "$BASEDIR"/image
-    docker build --build-arg buildpacks="$(< "buildpacks.json")" -t "eirini/recipe:${TAG}" -f Dockerfile-${1} .
+    docker build --build-arg buildpacks="$(< "buildpacks.json")" -t "eirini/${1}:${TAG}" -f Dockerfile-${1} .
   popd
 }
 
