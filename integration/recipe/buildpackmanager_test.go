@@ -15,15 +15,14 @@ import (
 	"github.com/onsi/gomega/ghttp"
 
 	"code.cloudfoundry.org/eirini/recipe"
-	. "code.cloudfoundry.org/eirini/recipe/cmd/buildpack"
 )
 
-var _ = Describe("Buildpackmanager", func() {
+var _ = FDescribe("Buildpackmanager", func() {
 
 	var (
 		client           *http.Client
 		buildpackDir     string
-		buildpackManager *Manager
+		buildpackManager *recipe.BuildpackManager
 		buildpacks       []recipe.Buildpack
 		server           *ghttp.Server
 		responseContent  []byte
@@ -36,7 +35,7 @@ var _ = Describe("Buildpackmanager", func() {
 		buildpackDir, err = ioutil.TempDir("", "buildpacks")
 		Expect(err).ToNot(HaveOccurred())
 
-		buildpackManager = New(client, client, buildpackDir)
+		buildpackManager = recipe.NewBuildpackManager(client, client, buildpackDir)
 
 		responseContent, err = makeZippedPackage()
 		Expect(err).ToNot(HaveOccurred())

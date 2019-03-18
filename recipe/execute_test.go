@@ -1,9 +1,7 @@
 package recipe_test
 
 import (
-	"errors"
 	"io/ioutil"
-	"net/http"
 	"os"
 
 	. "github.com/onsi/ginkgo"
@@ -19,8 +17,6 @@ var _ = Describe("PacksExecutor", func() {
 
 	var (
 		executor       Executor
-		installer      *recipefakes.FakeInstaller
-		uploader       *recipefakes.FakeUploader
 		commander      *recipefakes.FakeCommander
 		resultModifier *recipefakes.FakeStagingResultModifier
 		tmpfile        *os.File
@@ -41,8 +37,6 @@ var _ = Describe("PacksExecutor", func() {
 	}
 
 	BeforeEach(func() {
-		installer = new(recipefakes.FakeInstaller)
-		uploader = new(recipefakes.FakeUploader)
 		commander = new(recipefakes.FakeCommander)
 		resultModifier = new(recipefakes.FakeStagingResultModifier)
 
@@ -63,11 +57,8 @@ var _ = Describe("PacksExecutor", func() {
 		}
 
 		executor = &PacksExecutor{
-			Conf:           packsConf,
-			Installer:      installer,
-			Uploader:       uploader,
-			Commander:      commander,
-			ResultModifier: resultModifier,
+			Conf:      packsConf,
+			Commander: commander,
 		}
 
 	})
@@ -117,14 +108,6 @@ var _ = Describe("PacksExecutor", func() {
 			Expect(err).ToNot(HaveOccurred())
 		})
 
-		It("should download and extract the app bits", func() {
-			Expect(installer.InstallCallCount()).To(Equal(1))
-
-			downloadURL, workspaceDir := installer.InstallArgsForCall(0)
-			Expect(downloadURL).To(Equal(server.URL() + "app-id"))
-			Expect(workspaceDir).To(Equal("/workspace"))
-		})
-
 		It("should run the packs builder", func() {
 			Expect(commander.ExecCallCount()).To(Equal(1))
 
@@ -138,128 +121,96 @@ var _ = Describe("PacksExecutor", func() {
 			))
 		})
 
-		It("should upload the droplet", func() {
-			Expect(uploader.UploadCallCount()).To(Equal(1))
+		// Context("and download or extract of app bits fails", func() {
+		//
+		// 	BeforeEach(func() {
+		// 		installer.InstallReturns(errors.New("boom"))
+		// 		server.RouteToHandler("PUT", "/stage/staging-guid/completed",
+		// 			ghttp.VerifyJSON(`{
+		// 				"task_guid": "staging-guid",
+		// 				"failed": true,
+		// 				"failure_reason": "boom",
+		// 				"result": "",
+		// 				"annotation": "{\"lifecycle\":\"\",\"completion_callback\":\"completion-call-me-back\"}",
+		// 				"created_at": 0
+		// 			}`),
+		// 		)
+		// 	})
+		//
+		// 	It("should return an error", func() {
+		// 		Expect(err).To(HaveOccurred())
+		// 	})
+		//
+		// 	It("should send completion response with a failure", func() {
+		// 		Expect(server.ReceivedRequests()).To(HaveLen(1))
+		// 	})
+		//
+		// })
 
-			path, url := uploader.UploadArgsForCall(0)
-			Expect(path).To(Equal("/out/droplet.tgz"))
-			Expect(url).To(Equal("droplet.eu/upload"))
-		})
+		// Context("and it fails to execute packs builder", func() {
+		//
+		// 	BeforeEach(func() {
+		// 		commander.ExecReturns(errors.New("boomz"))
+		// 		server.RouteToHandler("PUT", "/stage/staging-guid/completed",
+		// 			ghttp.VerifyJSON(`{
+		// 				"task_guid": "staging-guid",
+		// 				"failed": true,
+		// 				"failure_reason": "boomz",
+		// 				"result": "",
+		// 				"annotation": "{\"lifecycle\":\"\",\"completion_callback\":\"completion-call-me-back\"}",
+		// 				"created_at": 0
+		// 			}`),
+		// 		)
+		// 	})
+		//
+		// 	It("should return an error", func() {
+		// 		Expect(err).To(HaveOccurred())
+		// 	})
+		//
+		// 	It("should send completion response with a failure", func() {
+		// 		Expect(server.ReceivedRequests()).To(HaveLen(1))
+		// 	})
+		// })
 
-		It("should send successful completion response", func() {
-			Expect(server.ReceivedRequests()).To(HaveLen(1))
-		})
+		// Context("and it fails to upload the droplet", func() {
+		//
+		// 	BeforeEach(func() {
+		// 		uploader.UploadReturns(errors.New("booma"))
+		// 		server.RouteToHandler("PUT", "/stage/staging-guid/completed",
+		// 			ghttp.VerifyJSON(`{
+		// 				"task_guid": "staging-guid",
+		// 				"failed": true,
+		// 				"failure_reason": "booma",
+		// 				"result": "",
+		// 				"annotation": "{\"lifecycle\":\"\",\"completion_callback\":\"completion-call-me-back\"}",
+		// 				"created_at": 0
+		// 			}`),
+		// 		)
+		// 	})
+		//
+		// 	It("should return an error", func() {
+		// 		Expect(err).To(HaveOccurred())
+		// 	})
+		//
+		// 	It("should send completion response with a failure", func() {
+		// 		Expect(server.ReceivedRequests()).To(HaveLen(1))
+		// 	})
+		// })
 
-		Context("and unmarshalling the staging result fails", func() {
-			BeforeEach(func() {
-				resultContents = "{ not valid json"
-			})
-
-			It("should return an error", func() {
-				Expect(err).To(HaveOccurred())
-			})
-		})
-
-		Context("and the result modifier fails", func() {
-			BeforeEach(func() {
-				resultModifier.ModifyReturns(bap.StagingResult{}, errors.New("Unmodifiable"))
-			})
-
-			It("should return an error", func() {
-				Expect(err).To(HaveOccurred())
-			})
-
-		})
-		Context("and download or extract of app bits fails", func() {
-
-			BeforeEach(func() {
-				installer.InstallReturns(errors.New("boom"))
-				server.RouteToHandler("PUT", "/stage/staging-guid/completed",
-					ghttp.VerifyJSON(`{
-						"task_guid": "staging-guid",
-						"failed": true,
-						"failure_reason": "boom",
-						"result": "",
-						"annotation": "{\"lifecycle\":\"\",\"completion_callback\":\"completion-call-me-back\"}",
-						"created_at": 0
-					}`),
-				)
-			})
-
-			It("should return an error", func() {
-				Expect(err).To(HaveOccurred())
-			})
-
-			It("should send completion response with a failure", func() {
-				Expect(server.ReceivedRequests()).To(HaveLen(1))
-			})
-
-		})
-
-		Context("and it fails to execute packs builder", func() {
-
-			BeforeEach(func() {
-				commander.ExecReturns(errors.New("boomz"))
-				server.RouteToHandler("PUT", "/stage/staging-guid/completed",
-					ghttp.VerifyJSON(`{
-						"task_guid": "staging-guid",
-						"failed": true,
-						"failure_reason": "boomz",
-						"result": "",
-						"annotation": "{\"lifecycle\":\"\",\"completion_callback\":\"completion-call-me-back\"}",
-						"created_at": 0
-					}`),
-				)
-			})
-
-			It("should return an error", func() {
-				Expect(err).To(HaveOccurred())
-			})
-
-			It("should send completion response with a failure", func() {
-				Expect(server.ReceivedRequests()).To(HaveLen(1))
-			})
-		})
-
-		Context("and it fails to upload the droplet", func() {
-
-			BeforeEach(func() {
-				uploader.UploadReturns(errors.New("booma"))
-				server.RouteToHandler("PUT", "/stage/staging-guid/completed",
-					ghttp.VerifyJSON(`{
-						"task_guid": "staging-guid",
-						"failed": true,
-						"failure_reason": "booma",
-						"result": "",
-						"annotation": "{\"lifecycle\":\"\",\"completion_callback\":\"completion-call-me-back\"}",
-						"created_at": 0
-					}`),
-				)
-			})
-
-			It("should return an error", func() {
-				Expect(err).To(HaveOccurred())
-			})
-
-			It("should send completion response with a failure", func() {
-				Expect(server.ReceivedRequests()).To(HaveLen(1))
-			})
-		})
-
-		Context("and eirini returns response with failure status", func() {
-
-			BeforeEach(func() {
-				server.RouteToHandler("PUT", "/stage/staging-guid/completed",
-					ghttp.RespondWith(http.StatusInternalServerError, ""),
-				)
-			})
-
-			It("should return an error", func() {
-				Expect(server.ReceivedRequests()).To(HaveLen(1))
-				Expect(err).To(HaveOccurred())
-			})
-
-		})
+		// Context("and eirini returns response with failure status", func() {
+		//
+		// 	BeforeEach(func() {
+		// 		server.RouteToHandler("PUT", "/stage/staging-guid/completed",
+		// 			ghttp.RespondWith(http.StatusInternalServerError, ""),
+		// 		)
+		// 	})
+		//
+		// 	It("should return an error", func() {
+		// 		Expect(server.ReceivedRequests()).To(HaveLen(1))
+		// 		Expect(err).To(HaveOccurred())
+		// 	})
+		//
+		// })
 
 	})
 

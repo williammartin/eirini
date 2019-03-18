@@ -13,7 +13,7 @@ import (
 	. "code.cloudfoundry.org/eirini/recipe"
 )
 
-var _ = Describe("Unzip function", func() {
+var _ = FDescribe("Unzip function", func() {
 
 	var (
 		targetDir string
@@ -128,6 +128,11 @@ var _ = Describe("Unzip function", func() {
 				BeforeEach(func() {
 					srcZip = "testdata/just_files.zip"
 				})
+
+				AfterEach(func() {
+					cleanUpFiles()
+				})
+
 				assertFilesUnzippedSuccessfully()
 			})
 
@@ -135,6 +140,11 @@ var _ = Describe("Unzip function", func() {
 				BeforeEach(func() {
 					srcZip = "testdata/unzip_me.zip"
 				})
+
+				AfterEach(func() {
+					cleanUpFiles()
+				})
+
 				assertFilesUnzippedSuccessfully()
 			})
 		})

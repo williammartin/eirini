@@ -14,19 +14,42 @@ import (
 func main() {
 	dropletUploadURL := os.Getenv(eirini.EnvDropletUploadURL)
 
-	uploader := &recipe.DropletUploader{
-		HTTPClient: createUploaderHTTPClient(),
+	appID := os.Getenv(eirini.EnvAppID)
+	stagingGUID := os.Getenv(eirini.EnvStagingGUID)
+	completionCallback := os.Getenv(eirini.EnvCompletionCallback)
+	eiriniAddress := os.Getenv(eirini.EnvEiriniAddress)
+	appBitsDownloadURL := os.Getenv(eirini.EnvDownloadURL)
+	dropletUploadURL := os.Getenv(eirini.EnvDropletUploadURL)
+
+	cfg := recipe.Config{
+		AppID:              appID,
+		StagingGUID:        stagingGUID,
+		CompletionCallback: completionCallback,
+		EiriniAddr:         eiriniAddress,
+		DropletUploadURL:   dropletUploadURL,
+		PackageDownloadURL: appBitsDownloadURL,
 	}
 
-	err := uploader.Upload(commons.OutputDropletLocation, dropletUploadURL)
+	responder := commons.NewResponder(cfg)
+
+	client := createUploaderHTTPClient()
+	err := uploadClient.Upload(client, stagerURL, dropletUploaderURL, commons.OutputDropletLocation)
 	if err != nil {
-		commons.RespondWithFailure(err)
+		responder.RespondWithFailure(err)
 		os.Exit(1)
 	}
 
-	err = commons.RespondWithSuccess()
+	buildpackCfg := os.Getenv(eirini.EnvBuildpacks)
+	resp, err := responder.PrepareResponse(cfg, commons.OutputMetadataLocation, buildpackCfg)
 	if err != nil {
-		commons.RespondWithFailure(err)
+		// TODO: log error
+		commons.RespondWithFailure(cfg, err)
+		os.Exit(1)
+	}
+
+	err = commons.RespondWithSuccess(resp)
+	if err != nil {
+		// TODO: log that it didnt go through
 		os.Exit(1)
 	}
 }

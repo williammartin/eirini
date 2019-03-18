@@ -17,7 +17,7 @@ const workspaceDir = "/workspace"
 
 func main() {
 	downloadClient := createDownloadHTTPClient()
-	buildPackManager := NewManager(downloadClient, http.DefaultClient, buildPacksDir)
+	buildPackManager := recipe.NewBuildpackManager(downloadClient, http.DefaultClient, buildPacksDir)
 
 	installer := &recipe.PackageInstaller{
 		Client:    downloadClient,
@@ -36,8 +36,23 @@ func main() {
 		os.Exit(1)
 	}
 
-	recipeConf := commons.RecipeConfig()
-	err = installer.Install(recipeConf.PackageDownloadURL, workspaceDir)
+	appID := os.Getenv(eirini.EnvAppID)
+	stagingGUID := os.Getenv(eirini.EnvStagingGUID)
+	completionCallback := os.Getenv(eirini.EnvCompletionCallback)
+	eiriniAddress := os.Getenv(eirini.EnvEiriniAddress)
+	appBitsDownloadURL := os.Getenv(eirini.EnvDownloadURL)
+	dropletUploadURL := os.Getenv(eirini.EnvDropletUploadURL)
+
+	cfg := recipe.Config{
+		AppID:              appID,
+		StagingGUID:        stagingGUID,
+		CompletionCallback: completionCallback,
+		EiriniAddr:         eiriniAddress,
+		DropletUploadURL:   dropletUploadURL,
+		PackageDownloadURL: appBitsDownloadURL,
+	}
+
+	err = installer.Install(cfg.PackageDownloadURL, workspaceDir)
 	if err != nil {
 		fmt.Println("Error while installing app bits:", err.Error())
 		os.Exit(1)

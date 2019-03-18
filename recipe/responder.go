@@ -1,4 +1,4 @@
-package commons
+package recipe
 
 import (
 	"bytes"
@@ -10,29 +10,39 @@ import (
 
 	"code.cloudfoundry.org/bbs/models"
 	bap "code.cloudfoundry.org/buildpackapplifecycle"
-	"code.cloudfoundry.org/eirini/recipe"
 	"code.cloudfoundry.org/runtimeschema/cc_messages"
 	"github.com/pkg/errors"
 )
 
-func RespondWithFailure(failure error) {
-	recipeConfig := RecipeConfig()
-	cbResponse := createFailureResponse(failure, recipeConfig.StagingGUID, recipeConfig.CompletionCallback)
+type Responder struct {
+	cfg Config
+}
 
-	if completeErr := sendCompleteResponse(recipeConfig.EiriniAddr, cbResponse); completeErr != nil {
+func NewResponder(cfg Config) Responder {
+	return Responder{
+		cfg: cfg,
+	}
+}
+
+func (r Responder) RespondWithFailure(failure error) {
+	cbResponse := r.createFailureResponse(failure, r.cfg.StagingGUID, r.cfg.CompletionCallback)
+
+	if completeErr := r.sendCompleteResponse(r.cfg.EiriniAddr, cbResponse); completeErr != nil {
 		fmt.Println("Error processsing completion callback:", completeErr.Error())
 	}
 }
 
-func RespondWithSuccess() error {
-	recipeConfig := RecipeConfig()
-
-	cbResponse, err := createSuccessResponse(RecipeConfig(), OutputMetadataLocation, BuildpackJson())
+func (r Responder) PrepareSuccessResponse(outputLocation, buildpackCfg string) (*models.TaskCallbackResponse, error) {
+	resp, err := r.createSuccessResponse(r.cfg, outputLocation, buildpackCfg)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	err = sendCompleteResponse(recipeConfig.EiriniAddr, cbResponse)
+	return resp, nil
+}
+
+func (r Responder) RespondWithSuccess(resp *models.TaskCallbackResponse) error {
+	err := r.sendCompleteResponse(r.cfg.EiriniAddr, resp)
 	if err != nil {
 		return err
 	}
@@ -40,13 +50,13 @@ func RespondWithSuccess() error {
 	return nil
 }
 
-func createSuccessResponse(recipeConfig recipe.Config, outputMetadataLocation string, buildpackJson string) (*models.TaskCallbackResponse, error) {
-	stagingResult, err := getStagingResult(outputMetadataLocation)
+func (r Responder) createSuccessResponse(recipeConfig Config, outputMetadataLocation string, buildpackJson string) (*models.TaskCallbackResponse, error) {
+	stagingResult, err := r.getStagingResult(outputMetadataLocation)
 	if err != nil {
 		return nil, err
 	}
 
-	modifier := &recipe.BuildpacksKeyModifier{CCBuildpacksJSON: buildpackJson}
+	modifier := &BuildpacksKeyModifier{CCBuildpacksJSON: buildpackJson}
 	stagingResult, err = modifier.Modify(stagingResult)
 	if err != nil {
 		return nil, err
@@ -74,7 +84,7 @@ func createSuccessResponse(recipeConfig recipe.Config, outputMetadataLocation st
 	}, nil
 }
 
-func createFailureResponse(failure error, stagingGUID, completionCallback string) *models.TaskCallbackResponse {
+func (r Responder) createFailureResponse(failure error, stagingGUID, completionCallback string) *models.TaskCallbackResponse {
 	annotation := cc_messages.StagingTaskAnnotation{
 		CompletionCallback: completionCallback,
 	}
@@ -92,7 +102,7 @@ func createFailureResponse(failure error, stagingGUID, completionCallback string
 	}
 }
 
-func getStagingResult(path string) (bap.StagingResult, error) {
+func (r Responder) getStagingResult(path string) (bap.StagingResult, error) {
 	contents, err := ioutil.ReadFile(filepath.Clean(path))
 	if err != nil {
 		return bap.StagingResult{}, errors.Wrap(err, "failed to read result.json")
@@ -105,7 +115,7 @@ func getStagingResult(path string) (bap.StagingResult, error) {
 	return stagingResult, nil
 }
 
-func sendCompleteResponse(eiriniAddress string, response *models.TaskCallbackResponse) error {
+func (r Responder) sendCompleteResponse(eiriniAddress string, response *models.TaskCallbackResponse) error {
 	responseJSON, err := json.Marshal(response)
 	if err != nil {
 		panic(err)

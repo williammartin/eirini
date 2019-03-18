@@ -13,6 +13,8 @@ import (
 const (
 	ActiveDeadlineSeconds = 900
 	stagingSourceType     = "STG"
+	parallelism           = 1
+	completions           = 3
 )
 
 type TaskDesirer struct {
@@ -85,6 +87,8 @@ func toJob(task *opi.Task) *batch.Job {
 	job := &batch.Job{
 		Spec: batch.JobSpec{
 			ActiveDeadlineSeconds: int64ptr(ActiveDeadlineSeconds),
+			Parallelism:           int32ptr(parallelism),
+			Completions:           int32ptr(completions),
 			Template: v1.PodTemplateSpec{
 				Spec: v1.PodSpec{
 					Containers: []v1.Container{
