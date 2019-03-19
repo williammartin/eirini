@@ -19,6 +19,13 @@ type Buildpack struct {
 	URL  string `json:"url"`
 }
 
+type BuildpackManager struct {
+	unzipper       Unzipper
+	buildpackDir   string
+	internalClient *http.Client
+	defaultClient  *http.Client
+}
+
 const configFileName = "config.json"
 
 func OpenBuildpackURL(buildpack *Buildpack, client *http.Client) ([]byte, error) {
@@ -37,13 +44,6 @@ func OpenBuildpackURL(buildpack *Buildpack, client *http.Client) ([]byte, error)
 	}
 
 	return bytes, nil
-}
-
-type BuildpackManager struct {
-	unzipper       Unzipper
-	buildpackDir   string
-	internalClient *http.Client
-	defaultClient  *http.Client
 }
 
 func NewBuildpackManager(internalClient *http.Client, defaultClient *http.Client, buildpackDir string) *BuildpackManager {

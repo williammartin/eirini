@@ -17,7 +17,7 @@ import (
 	"code.cloudfoundry.org/eirini/recipe"
 )
 
-var _ = FDescribe("Buildpackmanager", func() {
+var _ = Describe("Buildpackmanager", func() {
 
 	var (
 		client           *http.Client
