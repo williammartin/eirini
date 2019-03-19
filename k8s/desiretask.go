@@ -84,6 +84,7 @@ func (d *TaskDesirer) toStagingJob(task *opi.Task) *batch.Job {
 }
 
 func toJob(task *opi.Task) *batch.Job {
+	automountServiceAccountToken := false
 	job := &batch.Job{
 		Spec: batch.JobSpec{
 			ActiveDeadlineSeconds: int64ptr(ActiveDeadlineSeconds),
@@ -91,6 +92,7 @@ func toJob(task *opi.Task) *batch.Job {
 			Completions:           int32ptr(completions),
 			Template: v1.PodTemplateSpec{
 				Spec: v1.PodSpec{
+					AutomountServiceAccountToken: &automountServiceAccountToken,
 					Containers: []v1.Container{
 						{
 							Name:            "opi-task-downloader",
