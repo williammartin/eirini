@@ -8,13 +8,13 @@ readonly TAG="${1?Provide a tag please}"
 main() {
 
   build-binary downloader
-  build-binary runner
+  build-binary executor
   build-binary uploader
 
   build-packs-builder
 
   build-image downloader
-  build-image runner
+  build-image executor
   build-image uploader
 
 }
