@@ -102,7 +102,7 @@ func toJob(task *opi.Task) *batch.Job {
 						},
 						{
 							Name:            "opi-task-executor",
-							Image:           task.RunnerImage,
+							Image:           task.ExecutorImage,
 							ImagePullPolicy: v1.PullAlways,
 							Env:             MapToEnvVar(task.Env),
 						},

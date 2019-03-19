@@ -44,8 +44,8 @@ var _ = Describe("Desiretask", func() {
 		Expect(job.Spec.Template.Spec.AutomountServiceAccountToken).To(Equal(&automountServiceAccountToken))
 	}
 
-	assertContainer := func(container v1.Container) {
-		Expect(container.Name).To(Equal("opi-task"))
+	assertContainer := func(container v1.Container, name string) {
+		Expect(container.Name).To(Equal(name))
 		Expect(container.Image).To(Equal(Image))
 		Expect(container.ImagePullPolicy).To(Equal(v1.PullAlways))
 
@@ -62,7 +62,9 @@ var _ = Describe("Desiretask", func() {
 	BeforeEach(func() {
 		fakeClient = fake.NewSimpleClientset()
 		task = &opi.Task{
-			Image: Image,
+			DownloaderImage: Image,
+			ExecutorImage:   Image,
+			UploaderImage:   Image,
 			Env: map[string]string{
 				eirini.EnvDownloadURL:        "example.com/download",
 				eirini.EnvDropletUploadURL:   "example.com/upload",
@@ -97,9 +99,11 @@ var _ = Describe("Desiretask", func() {
 			assertGeneralSpec(job)
 
 			containers := job.Spec.Template.Spec.Containers
-			Expect(containers).To(HaveLen(1))
+			Expect(containers).To(HaveLen(3))
 
-			assertContainer(containers[0])
+			assertContainer(containers[0], "opi-task-downloader")
+			assertContainer(containers[1], "opi-task-executor")
+			assertContainer(containers[2], "opi-task-uploader")
 		})
 
 		Context("and the job already exists", func() {
@@ -176,9 +180,11 @@ var _ = Describe("Desiretask", func() {
 			assertGeneralSpec(job)
 
 			containers := job.Spec.Template.Spec.Containers
-			Expect(containers).To(HaveLen(1))
+			Expect(containers).To(HaveLen(3))
 
-			assertContainer(containers[0])
+			assertContainer(containers[0], "opi-task-downloader")
+			assertContainer(containers[1], "opi-task-executor")
+			assertContainer(containers[2], "opi-task-uploader")
 			assertStagingSpec(job)
 		})
 

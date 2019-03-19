@@ -72,7 +72,7 @@ type Healtcheck struct {
 type Task struct {
 	DownloaderImage string
 	UploaderImage   string
-	RunnerImage     string
+	ExecutorImage   string
 	Command         []string
 	Env             map[string]string
 }

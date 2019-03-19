@@ -95,7 +95,7 @@ var _ = Describe("Stager", func() {
 			Expect(task).To(Equal(&opi.Task{
 				DownloaderImage: "eirini/recipe-downloader:tagged",
 				UploaderImage:   "eirini/recipe-uploader:tagged",
-				RunnerImage:     "eirini/recipe-runner:tagged",
+				ExecutorImage:   "eirini/recipe-runner:tagged",
 				Env: map[string]string{
 					"HOWARD":                     "the alien",
 					eirini.EnvDownloadURL:        "example.com/download",
