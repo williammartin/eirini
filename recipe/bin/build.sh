@@ -16,7 +16,6 @@ main() {
   build-image downloader
   build-image executor
   build-image uploader
-
 }
 
 build-binary() {
@@ -34,7 +33,7 @@ build-packs-builder() {
 # TODO: cleanup build image and build args
 build-image() {
   pushd "$BASEDIR"/image
-    docker build --build-arg buildpacks="$(< "buildpacks.json")" -t "nimak/${1}:${TAG}" -f Dockerfile-${1} .
+    docker build --build-arg buildpacks="$(< "buildpacks.json")" -t "eirini/recipe-${1}:${TAG}" -f Dockerfile-${1} .
   popd
 }
 

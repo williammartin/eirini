@@ -30,8 +30,10 @@ var _ = Describe("Stager", func() {
 
 		logger := lagertest.NewTestLogger("test")
 		config := &eirini.StagerConfig{
-			EiriniAddress: "http://opi.cf.internal",
-			Image:         "eirini/recipe:tagged",
+			EiriniAddress:   "http://opi.cf.internal",
+			DownloaderImage: "eirini/recipe-downloader:tagged",
+			UploaderImage:   "eirini/recipe-uploader:tagged",
+			RunnerImage:     "eirini/recipe-runner:tagged",
 		}
 
 		stager = &Stager{
@@ -91,7 +93,9 @@ var _ = Describe("Stager", func() {
 			Expect(taskDesirer.DesireStagingCallCount()).To(Equal(1))
 			task := taskDesirer.DesireStagingArgsForCall(0)
 			Expect(task).To(Equal(&opi.Task{
-				Image: "eirini/recipe:tagged",
+				DownloaderImage: "eirini/recipe-downloader:tagged",
+				UploaderImage:   "eirini/recipe-uploader:tagged",
+				RunnerImage:     "eirini/recipe-runner:tagged",
 				Env: map[string]string{
 					"HOWARD":                     "the alien",
 					eirini.EnvDownloadURL:        "example.com/download",
