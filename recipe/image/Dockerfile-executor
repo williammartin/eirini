@@ -1,17 +1,13 @@
 ARG stack
 FROM packs/cf
 
-# runs packs to build a droplet (in a volume)
-
-ARG buildpacks
-
 WORKDIR /workspace
 
 RUN mkdir -p /packs
 
 COPY builder /packs/
-COPY runner /packs/
+COPY executor /packs/
 
 ENTRYPOINT [ \
-  "/packs/runner" \
+  "/packs/executor" \
 ]
