@@ -50,13 +50,13 @@ func (r Responder) RespondWithSuccess(resp *models.TaskCallbackResponse) error {
 	return nil
 }
 
-func (r Responder) createSuccessResponse(recipeConfig Config, outputMetadataLocation string, buildpackJson string) (*models.TaskCallbackResponse, error) {
+func (r Responder) createSuccessResponse(recipeConfig Config, outputMetadataLocation string, buildpackJSON string) (*models.TaskCallbackResponse, error) {
 	stagingResult, err := r.getStagingResult(outputMetadataLocation)
 	if err != nil {
 		return nil, err
 	}
 
-	modifier := &BuildpacksKeyModifier{CCBuildpacksJSON: buildpackJson}
+	modifier := &BuildpacksKeyModifier{CCBuildpacksJSON: buildpackJSON}
 	stagingResult, err = modifier.Modify(stagingResult)
 	if err != nil {
 		return nil, err

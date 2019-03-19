@@ -49,7 +49,7 @@ var _ = Describe("Responder", func() {
 					ghttp.VerifyJSON(`{
 						"task_guid": "staging-guid",
 						"failed": true,
-						"failure_reason": "sploded!",
+						"failure_reason": "sploded",
 						"result": "",
 						"annotation": "{\"lifecycle\":\"\",\"completion_callback\":\"completion-call-me-back\"}",
 						"created_at": 0
@@ -58,7 +58,7 @@ var _ = Describe("Responder", func() {
 			})
 
 			It("should respond with failure", func() {
-				err = errors.New("sploded!")
+				err = errors.New("sploded")
 				responder.RespondWithFailure(err)
 			})
 		})

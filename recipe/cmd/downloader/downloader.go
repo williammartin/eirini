@@ -1,15 +1,15 @@
 package main
 
 import (
-	"code.cloudfoundry.org/eirini"
-	"code.cloudfoundry.org/eirini/recipe"
-	"code.cloudfoundry.org/eirini/recipe/cmd/commons"
-	"code.cloudfoundry.org/eirini/util"
 	"encoding/json"
 	"fmt"
 	"net/http"
 	"os"
 	"path/filepath"
+
+	"code.cloudfoundry.org/eirini"
+	"code.cloudfoundry.org/eirini/recipe"
+	"code.cloudfoundry.org/eirini/util"
 )
 
 const buildPacksDir = "/var/lib/buildpacks"
@@ -24,24 +24,13 @@ func main() {
 		Extractor: &recipe.Unzipper{},
 	}
 
-	var buildpacks []recipe.Buildpack
-	err := json.Unmarshal([]byte(commons.BuildpackJson()), &buildpacks)
-	if err != nil {
-		fmt.Println(fmt.Sprintf("Error unmarshaling environment variable %s: %s", eirini.EnvBuildpacks, err.Error()))
-		os.Exit(1)
-	}
-
-	if err = buildPackManager.Install(buildpacks); err != nil {
-		fmt.Println("Error while installing buildpacks:", err.Error())
-		os.Exit(1)
-	}
-
 	appID := os.Getenv(eirini.EnvAppID)
 	stagingGUID := os.Getenv(eirini.EnvStagingGUID)
 	completionCallback := os.Getenv(eirini.EnvCompletionCallback)
 	eiriniAddress := os.Getenv(eirini.EnvEiriniAddress)
 	appBitsDownloadURL := os.Getenv(eirini.EnvDownloadURL)
 	dropletUploadURL := os.Getenv(eirini.EnvDropletUploadURL)
+	buildpacksJSON := os.Getenv(eirini.EnvBuildpacks)
 
 	cfg := recipe.Config{
 		AppID:              appID,
@@ -52,9 +41,26 @@ func main() {
 		PackageDownloadURL: appBitsDownloadURL,
 	}
 
+	responder := recipe.NewResponder(cfg)
+
+	var buildpacks []recipe.Buildpack
+	err := json.Unmarshal([]byte(buildpacksJSON), &buildpacks)
+	if err != nil {
+		fmt.Println(fmt.Sprintf("Error unmarshaling environment variable %s: %s", eirini.EnvBuildpacks, err.Error()))
+		responder.RespondWithFailure(err)
+		os.Exit(1)
+	}
+
+	if err = buildPackManager.Install(buildpacks); err != nil {
+		fmt.Println("Error while installing buildpacks:", err.Error())
+		responder.RespondWithFailure(err)
+		os.Exit(1)
+	}
+
 	err = installer.Install(cfg.PackageDownloadURL, workspaceDir)
 	if err != nil {
 		fmt.Println("Error while installing app bits:", err.Error())
+		responder.RespondWithFailure(err)
 		os.Exit(1)
 	}
 

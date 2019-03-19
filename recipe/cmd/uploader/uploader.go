@@ -7,13 +7,15 @@ import (
 
 	"code.cloudfoundry.org/eirini"
 	"code.cloudfoundry.org/eirini/recipe"
-	"code.cloudfoundry.org/eirini/recipe/cmd/commons"
 	"code.cloudfoundry.org/eirini/util"
 )
 
-func main() {
-	dropletUploadURL := os.Getenv(eirini.EnvDropletUploadURL)
+const (
+	OutputMetadataLocation = "/out/result.json"
+	OutputDropletLocation  = "/out/droplet.tgz"
+)
 
+func main() {
 	appID := os.Getenv(eirini.EnvAppID)
 	stagingGUID := os.Getenv(eirini.EnvStagingGUID)
 	completionCallback := os.Getenv(eirini.EnvCompletionCallback)
@@ -30,24 +32,27 @@ func main() {
 		PackageDownloadURL: appBitsDownloadURL,
 	}
 
-	responder := commons.NewResponder(cfg)
-
+	responder := recipe.NewResponder(cfg)
 	client := createUploaderHTTPClient()
-	err := uploadClient.Upload(client, stagerURL, dropletUploaderURL, commons.OutputDropletLocation)
+	uploadClient := recipe.DropletUploader{
+		Client: client,
+	}
+
+	err := uploadClient.Upload(dropletUploadURL, OutputDropletLocation)
 	if err != nil {
 		responder.RespondWithFailure(err)
 		os.Exit(1)
 	}
 
 	buildpackCfg := os.Getenv(eirini.EnvBuildpacks)
-	resp, err := responder.PrepareResponse(cfg, commons.OutputMetadataLocation, buildpackCfg)
+	resp, err := responder.PrepareSuccessResponse(OutputMetadataLocation, buildpackCfg)
 	if err != nil {
 		// TODO: log error
-		commons.RespondWithFailure(cfg, err)
+		responder.RespondWithFailure(err)
 		os.Exit(1)
 	}
 
-	err = commons.RespondWithSuccess(resp)
+	err = responder.RespondWithSuccess(resp)
 	if err != nil {
 		// TODO: log that it didnt go through
 		os.Exit(1)

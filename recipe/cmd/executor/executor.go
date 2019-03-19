@@ -1,10 +1,11 @@
 package main
 
 import (
-	"code.cloudfoundry.org/eirini/recipe"
-	"code.cloudfoundry.org/eirini/recipe/cmd/commons"
 	"fmt"
 	"os"
+
+	"code.cloudfoundry.org/eirini"
+	"code.cloudfoundry.org/eirini/recipe"
 )
 
 func main() {
@@ -14,7 +15,12 @@ func main() {
 		Stdin:  os.Stdin,
 	}
 
-	packsConf := commons.PacksConfig()
+	packsConf := recipe.PacksBuilderConf{
+		BuildpacksDir:             "/var/lib/buildpacks",
+		OutputDropletLocation:     "/out/droplet.tgz",
+		OutputBuildArtifactsCache: "/cache/cache.tgz",
+		OutputMetadataLocation:    "/out/result.json",
+	}
 	executor := &recipe.PacksExecutor{
 		Conf:      packsConf,
 		Commander: commander,
@@ -36,9 +42,11 @@ func main() {
 		PackageDownloadURL: appBitsDownloadURL,
 	}
 
+	responder := recipe.NewResponder(cfg)
+
 	err := executor.ExecuteRecipe(cfg)
 	if err != nil {
-		commons.RespondWithFailure(err)
+		responder.RespondWithFailure(err)
 		os.Exit(1)
 	}
 
