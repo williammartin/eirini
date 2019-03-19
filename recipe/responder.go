@@ -15,25 +15,29 @@ import (
 )
 
 type Responder struct {
-	cfg Config
+	StagingGUID        string
+	CompletionCallback string
+	EiriniAddr         string
 }
 
-func NewResponder(cfg Config) Responder {
+func NewResponder(stagingGUID string, completionCallback string, eiriniAddr string) Responder {
 	return Responder{
-		cfg: cfg,
+		StagingGUID:        stagingGUID,
+		CompletionCallback: completionCallback,
+		EiriniAddr:         eiriniAddr,
 	}
 }
 
 func (r Responder) RespondWithFailure(failure error) {
-	cbResponse := r.createFailureResponse(failure, r.cfg.StagingGUID, r.cfg.CompletionCallback)
+	cbResponse := r.createFailureResponse(failure, r.StagingGUID, r.CompletionCallback)
 
-	if completeErr := r.sendCompleteResponse(r.cfg.EiriniAddr, cbResponse); completeErr != nil {
+	if completeErr := r.sendCompleteResponse(cbResponse); completeErr != nil {
 		fmt.Println("Error processsing completion callback:", completeErr.Error())
 	}
 }
 
 func (r Responder) PrepareSuccessResponse(outputLocation, buildpackCfg string) (*models.TaskCallbackResponse, error) {
-	resp, err := r.createSuccessResponse(r.cfg, outputLocation, buildpackCfg)
+	resp, err := r.createSuccessResponse(outputLocation, buildpackCfg)
 	if err != nil {
 		return nil, err
 	}
@@ -42,15 +46,10 @@ func (r Responder) PrepareSuccessResponse(outputLocation, buildpackCfg string) (
 }
 
 func (r Responder) RespondWithSuccess(resp *models.TaskCallbackResponse) error {
-	err := r.sendCompleteResponse(r.cfg.EiriniAddr, resp)
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return r.sendCompleteResponse(resp)
 }
 
-func (r Responder) createSuccessResponse(recipeConfig Config, outputMetadataLocation string, buildpackJSON string) (*models.TaskCallbackResponse, error) {
+func (r Responder) createSuccessResponse(outputMetadataLocation string, buildpackJSON string) (*models.TaskCallbackResponse, error) {
 	stagingResult, err := r.getStagingResult(outputMetadataLocation)
 	if err != nil {
 		return nil, err
@@ -68,7 +67,7 @@ func (r Responder) createSuccessResponse(recipeConfig Config, outputMetadataLoca
 	}
 
 	annotation := cc_messages.StagingTaskAnnotation{
-		CompletionCallback: recipeConfig.CompletionCallback,
+		CompletionCallback: r.CompletionCallback,
 	}
 
 	annotationJSON, err := json.Marshal(annotation)
@@ -77,7 +76,7 @@ func (r Responder) createSuccessResponse(recipeConfig Config, outputMetadataLoca
 	}
 
 	return &models.TaskCallbackResponse{
-		TaskGuid:   recipeConfig.StagingGUID,
+		TaskGuid:   r.StagingGUID,
 		Result:     string(result),
 		Failed:     false,
 		Annotation: string(annotationJSON),
@@ -115,13 +114,13 @@ func (r Responder) getStagingResult(path string) (bap.StagingResult, error) {
 	return stagingResult, nil
 }
 
-func (r Responder) sendCompleteResponse(eiriniAddress string, response *models.TaskCallbackResponse) error {
+func (r Responder) sendCompleteResponse(response *models.TaskCallbackResponse) error {
 	responseJSON, err := json.Marshal(response)
 	if err != nil {
 		panic(err)
 	}
 
-	uri := fmt.Sprintf("%s/stage/%s/completed", eiriniAddress, response.TaskGuid)
+	uri := fmt.Sprintf("%s/stage/%s/completed", r.EiriniAddr, response.TaskGuid)
 	req, err := http.NewRequest("PUT", uri, bytes.NewBuffer(responseJSON))
 	if err != nil {
 		return errors.Wrap(err, "failed to create request")

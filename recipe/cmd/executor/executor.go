@@ -9,6 +9,13 @@ import (
 )
 
 func main() {
+
+	stagingGUID := os.Getenv(eirini.EnvStagingGUID)
+	completionCallback := os.Getenv(eirini.EnvCompletionCallback)
+	eiriniAddress := os.Getenv(eirini.EnvEiriniAddress)
+
+	responder := recipe.NewResponder(stagingGUID, completionCallback, eiriniAddress)
+
 	commander := &recipe.IOCommander{
 		Stdout: os.Stdout,
 		Stderr: os.Stderr,
@@ -21,30 +28,13 @@ func main() {
 		OutputBuildArtifactsCache: "/cache/cache.tgz",
 		OutputMetadataLocation:    "/out/result.json",
 	}
+
 	executor := &recipe.PacksExecutor{
 		Conf:      packsConf,
 		Commander: commander,
 	}
 
-	appID := os.Getenv(eirini.EnvAppID)
-	stagingGUID := os.Getenv(eirini.EnvStagingGUID)
-	completionCallback := os.Getenv(eirini.EnvCompletionCallback)
-	eiriniAddress := os.Getenv(eirini.EnvEiriniAddress)
-	appBitsDownloadURL := os.Getenv(eirini.EnvDownloadURL)
-	dropletUploadURL := os.Getenv(eirini.EnvDropletUploadURL)
-
-	cfg := recipe.Config{
-		AppID:              appID,
-		StagingGUID:        stagingGUID,
-		CompletionCallback: completionCallback,
-		EiriniAddr:         eiriniAddress,
-		DropletUploadURL:   dropletUploadURL,
-		PackageDownloadURL: appBitsDownloadURL,
-	}
-
-	responder := recipe.NewResponder(cfg)
-
-	err := executor.ExecuteRecipe(cfg)
+	err := executor.ExecuteRecipe()
 	if err != nil {
 		responder.RespondWithFailure(err)
 		os.Exit(1)

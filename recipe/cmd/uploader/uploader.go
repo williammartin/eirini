@@ -16,35 +16,30 @@ const (
 )
 
 func main() {
-	appID := os.Getenv(eirini.EnvAppID)
+	buildpackCfg := os.Getenv(eirini.EnvBuildpacks)
 	stagingGUID := os.Getenv(eirini.EnvStagingGUID)
 	completionCallback := os.Getenv(eirini.EnvCompletionCallback)
 	eiriniAddress := os.Getenv(eirini.EnvEiriniAddress)
-	appBitsDownloadURL := os.Getenv(eirini.EnvDownloadURL)
 	dropletUploadURL := os.Getenv(eirini.EnvDropletUploadURL)
 
-	cfg := recipe.Config{
-		AppID:              appID,
-		StagingGUID:        stagingGUID,
-		CompletionCallback: completionCallback,
-		EiriniAddr:         eiriniAddress,
-		DropletUploadURL:   dropletUploadURL,
-		PackageDownloadURL: appBitsDownloadURL,
-	}
+	responder := recipe.NewResponder(stagingGUID, completionCallback, eiriniAddress)
 
-	responder := recipe.NewResponder(cfg)
-	client := createUploaderHTTPClient()
-	uploadClient := recipe.DropletUploader{
-		Client: client,
-	}
-
-	err := uploadClient.Upload(dropletUploadURL, OutputDropletLocation)
+	client, err := createUploaderHTTPClient()
 	if err != nil {
 		responder.RespondWithFailure(err)
 		os.Exit(1)
 	}
 
-	buildpackCfg := os.Getenv(eirini.EnvBuildpacks)
+	uploadClient := recipe.DropletUploader{
+		Client: client,
+	}
+
+	err = uploadClient.Upload(dropletUploadURL, OutputDropletLocation)
+	if err != nil {
+		responder.RespondWithFailure(err)
+		os.Exit(1)
+	}
+
 	resp, err := responder.PrepareSuccessResponse(OutputMetadataLocation, buildpackCfg)
 	if err != nil {
 		// TODO: log error
@@ -59,17 +54,12 @@ func main() {
 	}
 }
 
-func createUploaderHTTPClient() *http.Client {
+func createUploaderHTTPClient() (*http.Client, error) {
 	cert := filepath.Join(eirini.CCCertsMountPath, eirini.CCUploaderCertName)
 	cacert := filepath.Join(eirini.CCCertsMountPath, eirini.CCInternalCACertName)
 	key := filepath.Join(eirini.CCCertsMountPath, eirini.CCUploaderKeyName)
 
-	client, err := util.CreateTLSHTTPClient([]util.CertPaths{
+	return util.CreateTLSHTTPClient([]util.CertPaths{
 		{Crt: cert, Key: key, Ca: cacert},
 	})
-	if err != nil {
-		panic(err)
-	}
-
-	return client
 }

@@ -43,7 +43,7 @@ type PacksExecutor struct {
 	Commander Commander
 }
 
-func (e *PacksExecutor) ExecuteRecipe(recipeConf Config) error {
+func (e *PacksExecutor) ExecuteRecipe() error {
 	args := []string{
 		"-buildpacksDir", e.Conf.BuildpacksDir,
 		"-outputDroplet", e.Conf.OutputDropletLocation,
