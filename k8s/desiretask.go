@@ -101,7 +101,7 @@ func toJob(task *opi.Task) *batch.Job {
 							Env:             MapToEnvVar(task.Env),
 						},
 						{
-							Name:            "opi-task-runner",
+							Name:            "opi-task-executor",
 							Image:           task.RunnerImage,
 							ImagePullPolicy: v1.PullAlways,
 							Env:             MapToEnvVar(task.Env),
