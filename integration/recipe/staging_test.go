@@ -1,11 +1,14 @@
 package recipe_test
 
 import (
+	"crypto/md5"
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"net/http"
 	"os"
 	"os/exec"
+	"path"
 	"path/filepath"
 
 	"code.cloudfoundry.org/eirini/recipe"
@@ -35,21 +38,28 @@ var _ = FDescribe("StagingText", func() {
 		session        *gexec.Session
 		buildpacks     []recipe.Buildpack
 		buildpacksDir  string
+		workspaceDir   string
 	)
 
 	BeforeEach(func() {
 
-		buildpacksDir, err = ioutil.TempDir("", "buildpacks")
+		workspaceDir, err = ioutil.TempDir("", "workspace")
+		Expect(err).NotTo(HaveOccurred())
+		err = os.Setenv(eirini.EnvWorkspaceDir, workspaceDir)
 		Expect(err).NotTo(HaveOccurred())
 
-		err = os.Setenv(eirini.EnvStagingGUID, stagingGUID)
-		Expect(err).NotTo(HaveOccurred())
-		err = os.Setenv(eirini.EnvCompletionCallback, completionCallback)
+		buildpacksDir, err = ioutil.TempDir("", "buildpacks")
 		Expect(err).NotTo(HaveOccurred())
 		err = os.Setenv(eirini.EnvBuildpacksDir, buildpacksDir)
 		Expect(err).NotTo(HaveOccurred())
 
-		appbitBytes, err = ioutil.ReadFile("testdata/catnip")
+		err = os.Setenv(eirini.EnvStagingGUID, stagingGUID)
+		Expect(err).NotTo(HaveOccurred())
+
+		err = os.Setenv(eirini.EnvCompletionCallback, completionCallback)
+		Expect(err).NotTo(HaveOccurred())
+
+		appbitBytes, err = ioutil.ReadFile("testdata/catnip.zip")
 		Expect(err).NotTo(HaveOccurred())
 
 		buildpackBytes, err = ioutil.ReadFile("testdata/binary-buildpack-cflinuxfs2-v1.0.31.zip")
@@ -77,12 +87,12 @@ var _ = FDescribe("StagingText", func() {
 
 			// Downloader
 			ghttp.CombineHandlers(
-				ghttp.VerifyRequest("GET", "/my-app-bits"),
-				ghttp.RespondWith(http.StatusOK, appbitBytes),
-			),
-			ghttp.CombineHandlers(
 				ghttp.VerifyRequest("GET", "/my-buildpack"),
 				ghttp.RespondWith(http.StatusOK, buildpackBytes),
+			),
+			ghttp.CombineHandlers(
+				ghttp.VerifyRequest("GET", "/my-app-bits"),
+				ghttp.RespondWith(http.StatusOK, appbitBytes),
 			),
 
 			// Uploader
@@ -97,6 +107,9 @@ var _ = FDescribe("StagingText", func() {
 		)
 
 		server.Start()
+
+		err = os.Setenv(eirini.EnvDownloadURL, urljoiner.Join(server.URL(), "my-app-bits"))
+		Expect(err).ToNot(HaveOccurred())
 
 		buildpacks = []recipe.Buildpack{
 			{
@@ -130,6 +143,10 @@ var _ = FDescribe("StagingText", func() {
 		Expect(err).NotTo(HaveOccurred())
 		err = os.Unsetenv(eirini.EnvBuildpacks)
 		Expect(err).ToNot(HaveOccurred())
+		err = os.Unsetenv(eirini.EnvDownloadURL)
+		Expect(err).ToNot(HaveOccurred())
+		err = os.Unsetenv(eirini.EnvWorkspaceDir)
+		Expect(err).ToNot(HaveOccurred())
 	})
 
 	Context("when a droplet needs building...", func() {
@@ -139,9 +156,10 @@ var _ = FDescribe("StagingText", func() {
 			JustBeforeEach(func() {
 				cmd := exec.Command(binaries.DownloaderPath)
 				session, err = gexec.Start(cmd, GinkgoWriter, GinkgoWriter)
+				Eventually(session).Should(gexec.Exit())
 			})
 
-			FIt("runs successfully", func() {
+			It("runs successfully", func() {
 				Expect(session.ExitCode()).To(BeZero())
 			})
 
@@ -161,11 +179,17 @@ var _ = FDescribe("StagingText", func() {
 			})
 
 			It("installs the binary buildpack", func() {
-
+				md5Hash := fmt.Sprintf("%x", md5.Sum([]byte("binary_buildpack")))
+				expectedBuildpackPath := path.Join(buildpacksDir, md5Hash)
+				Expect(expectedBuildpackPath).To(BeADirectory())
 			})
 
 			It("places the app bits in the workspace", func() {
-
+				actualBytes, err := ioutil.ReadFile(path.Join(workspaceDir, "catnip"))
+				Expect(err).NotTo(HaveOccurred())
+				expectedBytes, err := ioutil.ReadFile("testdata/catnip")
+				Expect(err).NotTo(HaveOccurred())
+				Expect(actualBytes).To(Equal(expectedBytes))
 			})
 
 			Context("creates the droplet", func() {

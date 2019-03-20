@@ -12,10 +12,6 @@ import (
 	"code.cloudfoundry.org/eirini/util"
 )
 
-const (
-	workspaceDir = "/workspace"
-)
-
 func main() {
 
 	stagingGUID := os.Getenv(eirini.EnvStagingGUID)
@@ -32,6 +28,11 @@ func main() {
 	certPath, ok := os.LookupEnv(eirini.EnvCertsPath)
 	if !ok {
 		certPath = eirini.CCCertsMountPath
+	}
+
+	workspaceDir, ok := os.LookupEnv(eirini.EnvWorkspaceDir)
+	if !ok {
+		certPath = eirini.RecipeWorkspaceDir
 	}
 
 	responder := recipe.NewResponder(stagingGUID, completionCallback, eiriniAddress)
