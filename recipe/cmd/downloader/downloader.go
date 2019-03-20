@@ -12,8 +12,10 @@ import (
 	"code.cloudfoundry.org/eirini/util"
 )
 
-const buildPacksDir = "/var/lib/buildpacks"
-const workspaceDir = "/workspace"
+const (
+	buildPacksDir = "/var/lib/buildpacks"
+	workspaceDir  = "/workspace"
+)
 
 func main() {
 

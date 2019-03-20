@@ -16,6 +16,7 @@ const (
 )
 
 func main() {
+
 	buildpackCfg := os.Getenv(eirini.EnvBuildpacks)
 	stagingGUID := os.Getenv(eirini.EnvStagingGUID)
 	completionCallback := os.Getenv(eirini.EnvCompletionCallback)
