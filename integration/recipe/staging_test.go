@@ -27,7 +27,7 @@ var _ = FDescribe("StagingText", func() {
 
 	const (
 		stagingGUID        = "5b00de6b-d8f4-476b-b070-303367b46cef"
-		completionCallback = "url://some_endpoint"
+		completionCallback = ""
 	)
 
 	var (
@@ -39,6 +39,8 @@ var _ = FDescribe("StagingText", func() {
 		buildpacks     []recipe.Buildpack
 		buildpacksDir  string
 		workspaceDir   string
+		outputDir      string
+		cacheDir       string
 	)
 
 	BeforeEach(func() {
@@ -46,6 +48,21 @@ var _ = FDescribe("StagingText", func() {
 		workspaceDir, err = ioutil.TempDir("", "workspace")
 		Expect(err).NotTo(HaveOccurred())
 		err = os.Setenv(eirini.EnvWorkspaceDir, workspaceDir)
+		Expect(err).NotTo(HaveOccurred())
+
+		outputDir, err = ioutil.TempDir("", "out")
+		Expect(err).NotTo(HaveOccurred())
+		err = os.Setenv(eirini.EnvOutputDropletLocation, path.Join(outputDir, "droplet.tgz"))
+		Expect(err).NotTo(HaveOccurred())
+		err = os.Setenv(eirini.EnvOutputMetadataLocation, path.Join(outputDir, "result.json"))
+		Expect(err).NotTo(HaveOccurred())
+
+		cacheDir, err = ioutil.TempDir("", "cache")
+		Expect(err).NotTo(HaveOccurred())
+		err = os.Setenv(eirini.EnvOutputBuildArtifactsCache, path.Join(cacheDir, "cache.tgz"))
+		Expect(err).NotTo(HaveOccurred())
+
+		err = os.Setenv(eirini.EnvPacksBuilderPath, binaries.PacksBuilderPath)
 		Expect(err).NotTo(HaveOccurred())
 
 		buildpacksDir, err = ioutil.TempDir("", "buildpacks")
@@ -83,6 +100,8 @@ var _ = FDescribe("StagingText", func() {
 		server = ghttp.NewUnstartedServer()
 		server.HTTPTestServer.TLS = tlsConfig
 
+		responseUrl := fmt.Sprintf("stage/%s/completed", stagingGUID)
+
 		server.AppendHandlers(
 
 			// Downloader
@@ -97,16 +116,20 @@ var _ = FDescribe("StagingText", func() {
 
 			// Uploader
 			ghttp.CombineHandlers(
-				ghttp.VerifyRequest("POST", "/my-droplet"),
+				ghttp.VerifyRequest("PUT", responseUrl),
 				ghttp.RespondWith(http.StatusOK, ""),
+				ghttp.VerifyBody([]byte("")),
 			),
 			ghttp.CombineHandlers(
-				ghttp.VerifyRequest("POST", "/cc-success"),
+				ghttp.VerifyRequest("POST", "/my-droplet"),
 				ghttp.RespondWith(http.StatusOK, ""),
 			),
 		)
 
 		server.Start()
+
+		err = os.Setenv(eirini.EnvEiriniAddress, server.URL())
+		Expect(err).NotTo(HaveOccurred())
 
 		err = os.Setenv(eirini.EnvDownloadURL, urljoiner.Join(server.URL(), "my-app-bits"))
 		Expect(err).ToNot(HaveOccurred())
@@ -132,6 +155,12 @@ var _ = FDescribe("StagingText", func() {
 	AfterEach(func() {
 		err = os.RemoveAll(buildpacksDir)
 		Expect(err).ToNot(HaveOccurred())
+		err = os.RemoveAll(workspaceDir)
+		Expect(err).ToNot(HaveOccurred())
+		err = os.RemoveAll(outputDir)
+		Expect(err).ToNot(HaveOccurred())
+		err = os.RemoveAll(cacheDir)
+		Expect(err).ToNot(HaveOccurred())
 
 		err = os.Unsetenv(eirini.EnvCertsPath)
 		Expect(err).ToNot(HaveOccurred())
@@ -147,6 +176,16 @@ var _ = FDescribe("StagingText", func() {
 		Expect(err).ToNot(HaveOccurred())
 		err = os.Unsetenv(eirini.EnvWorkspaceDir)
 		Expect(err).ToNot(HaveOccurred())
+		err = os.Unsetenv(eirini.EnvOutputDropletLocation)
+		Expect(err).NotTo(HaveOccurred())
+		err = os.Unsetenv(eirini.EnvOutputMetadataLocation)
+		Expect(err).NotTo(HaveOccurred())
+		err = os.Unsetenv(eirini.EnvOutputBuildArtifactsCache)
+		Expect(err).NotTo(HaveOccurred())
+		err = os.Unsetenv(eirini.EnvEiriniAddress)
+		Expect(err).NotTo(HaveOccurred())
+		err = os.Unsetenv(eirini.EnvPacksBuilderPath)
+		Expect(err).NotTo(HaveOccurred())
 	})
 
 	Context("when a droplet needs building...", func() {
@@ -199,11 +238,19 @@ var _ = FDescribe("StagingText", func() {
 					session, err = gexec.Start(cmd, GinkgoWriter, GinkgoWriter)
 				})
 
+				It("Should create the droplet", func() {
+					Expect(path.Join(outputDir, "droplet.tgz")).To(BeARegularFile())
+				})
+
+				It("Should create the output metadata", func() {
+					Expect(path.Join(outputDir, "result.json")).To(BeARegularFile())
+				})
+
 				Context("uploads the droplet", func() {
 
 					JustBeforeEach(func() {
-						cmd := exec.Command(binaries.UploaderPath)
-						session, err = gexec.Start(cmd, GinkgoWriter, GinkgoWriter)
+						//cmd := exec.Command(binaries.UploaderPath)
+						//session, err = gexec.Start(cmd, GinkgoWriter, GinkgoWriter)
 					})
 
 				})

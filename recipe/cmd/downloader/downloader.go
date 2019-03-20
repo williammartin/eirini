@@ -20,9 +20,9 @@ func main() {
 	appBitsDownloadURL := os.Getenv(eirini.EnvDownloadURL)
 	buildpacksJSON := os.Getenv(eirini.EnvBuildpacks)
 
-	buildPacksDir, ok := os.LookupEnv(eirini.EnvBuildpacksDir)
+	buildpacksDir, ok := os.LookupEnv(eirini.EnvBuildpacksDir)
 	if !ok {
-		buildPacksDir = eirini.RecipeBuildPacksDir
+		buildpacksDir = eirini.RecipeBuildPacksDir
 	}
 
 	certPath, ok := os.LookupEnv(eirini.EnvCertsPath)
@@ -44,7 +44,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	buildPackManager := recipe.NewBuildpackManager(downloadClient, http.DefaultClient, buildPacksDir)
+	buildPackManager := recipe.NewBuildpackManager(downloadClient, http.DefaultClient, buildpacksDir)
 
 	installer := &recipe.PackageInstaller{
 		Client:    downloadClient,

@@ -5,8 +5,6 @@ import (
 	"os/exec"
 )
 
-const workspaceDir = "/workspace"
-
 type IOCommander struct {
 	Stdout *os.File
 	Stderr *os.File
@@ -23,19 +21,11 @@ func (c *IOCommander) Exec(cmd string, args ...string) error {
 }
 
 type PacksBuilderConf struct {
+	PacksBuilderPath          string
 	BuildpacksDir             string
 	OutputDropletLocation     string
 	OutputBuildArtifactsCache string
 	OutputMetadataLocation    string
-}
-
-type Config struct {
-	AppID              string
-	StagingGUID        string
-	CompletionCallback string
-	EiriniAddr         string
-	DropletUploadURL   string
-	PackageDownloadURL string
 }
 
 type PacksExecutor struct {
@@ -51,7 +41,7 @@ func (e *PacksExecutor) ExecuteRecipe() error {
 		"-outputMetadata", e.Conf.OutputMetadataLocation,
 	}
 
-	err := e.Commander.Exec("/packs/builder", args...)
+	err := e.Commander.Exec(e.Conf.PacksBuilderPath, args...)
 	if err != nil {
 		return err
 	}

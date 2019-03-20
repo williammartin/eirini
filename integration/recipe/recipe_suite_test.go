@@ -2,7 +2,6 @@ package recipe_test
 
 import (
 	"encoding/json"
-	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
@@ -25,9 +24,10 @@ func TestRecipe(t *testing.T) {
 }
 
 type BinaryPaths struct {
-	DownloaderPath string `json:"downloader_path"`
-	ExecutorPath   string `json:"executor_path"`
-	UploaderPath   string `json:"uploader_path"`
+	DownloaderPath   string `json:"downloader_path"`
+	PacksBuilderPath string `json:"packs_builder_path"`
+	ExecutorPath     string `json:"executor_path"`
+	UploaderPath     string `json:"uploader_path"`
 }
 
 var _ = SynchronizedBeforeSuite(func() []byte {
@@ -41,13 +41,17 @@ var _ = SynchronizedBeforeSuite(func() []byte {
 	executorPath, err := gexec.Build(filepath.Join(absPath, "cmd/executor"))
 	Expect(err).NotTo(HaveOccurred())
 
+	packsBuilderPath, err := gexec.Build(filepath.Join(absPath, "packs/cf/cmd/builder"))
+	Expect(err).NotTo(HaveOccurred())
+
 	uploaderPath, err := gexec.Build(filepath.Join(absPath, "cmd/uploader"))
 	Expect(err).NotTo(HaveOccurred())
 
 	b := BinaryPaths{
-		DownloaderPath: downloaderPath,
-		ExecutorPath:   executorPath,
-		UploaderPath:   uploaderPath,
+		DownloaderPath:   downloaderPath,
+		PacksBuilderPath: packsBuilderPath,
+		ExecutorPath:     executorPath,
+		UploaderPath:     uploaderPath,
 	}
 
 	bytes, err := json.Marshal(b)
@@ -60,6 +64,15 @@ var _ = SynchronizedBeforeSuite(func() []byte {
 	err = json.Unmarshal(bytes, &binaries)
 	Expect(err).NotTo(HaveOccurred())
 
-	fmt.Println(binaries.DownloaderPath)
+})
 
+var _ = AfterSuite(func() {
+	err = os.RemoveAll(binaries.DownloaderPath)
+	Expect(err).NotTo(HaveOccurred())
+	err = os.RemoveAll(binaries.ExecutorPath)
+	Expect(err).NotTo(HaveOccurred())
+	err = os.RemoveAll(binaries.PacksBuilderPath)
+	Expect(err).NotTo(HaveOccurred())
+	err = os.RemoveAll(binaries.UploaderPath)
+	Expect(err).NotTo(HaveOccurred())
 })

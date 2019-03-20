@@ -8,18 +8,35 @@ import (
 	"code.cloudfoundry.org/eirini/recipe"
 )
 
-const (
-	buildpacksDir             = "/var/lib/buildpacks"
-	outputDropletLocation     = "/out/droplet.tgz"
-	outputBuildArtifactsCache = "/cache/cache.tgz"
-	outputMetadataLocation    = "/out/result.json"
-)
-
 func main() {
 
 	stagingGUID := os.Getenv(eirini.EnvStagingGUID)
 	completionCallback := os.Getenv(eirini.EnvCompletionCallback)
 	eiriniAddress := os.Getenv(eirini.EnvEiriniAddress)
+	buildpacksDir, ok := os.LookupEnv(eirini.EnvBuildpacksDir)
+	if !ok {
+		buildpacksDir = eirini.RecipeBuildPacksDir
+	}
+
+	outputDropletLocation, ok := os.LookupEnv(eirini.EnvOutputDropletLocation)
+	if !ok {
+		outputDropletLocation = eirini.RecipeOutputDropletLocation
+	}
+
+	outputBuildArtifactsCache, ok := os.LookupEnv(eirini.EnvOutputBuildArtifactsCache)
+	if !ok {
+		outputBuildArtifactsCache = eirini.RecipeOutputBuildArtifactsCache
+	}
+
+	outputMetadataLocation, ok := os.LookupEnv(eirini.EnvOutputMetadataLocation)
+	if !ok {
+		outputMetadataLocation = eirini.RecipeOutputMetadataLocation
+	}
+
+	packsBuilderPath, ok := os.LookupEnv(eirini.EnvPacksBuilderPath)
+	if !ok {
+		packsBuilderPath = eirini.RecipePacksBuilderPath
+	}
 
 	responder := recipe.NewResponder(stagingGUID, completionCallback, eiriniAddress)
 
@@ -30,6 +47,7 @@ func main() {
 	}
 
 	packsConf := recipe.PacksBuilderConf{
+		PacksBuilderPath:          packsBuilderPath,
 		BuildpacksDir:             buildpacksDir,
 		OutputDropletLocation:     outputDropletLocation,
 		OutputBuildArtifactsCache: outputBuildArtifactsCache,

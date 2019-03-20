@@ -121,6 +121,11 @@ func (r Responder) sendCompleteResponse(response *models.TaskCallbackResponse) e
 	}
 
 	uri := fmt.Sprintf("%s/stage/%s/completed", r.EiriniAddr, response.TaskGuid)
+
+	fmt.Println("WWWWWWWWWWWWWWWWWWWWWWw")
+	fmt.Println(uri)
+	fmt.Println(string(responseJSON))
+
 	req, err := http.NewRequest("PUT", uri, bytes.NewBuffer(responseJSON))
 	if err != nil {
 		return errors.Wrap(err, "failed to create request")
