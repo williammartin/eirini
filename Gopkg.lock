@@ -126,6 +126,14 @@
 
 [[projects]]
   branch = "master"
+  digest = "1:d55ad38b832eccf975b872c1a37bc1fc253d4e3b190c750d1bab06cc8b5b85ac"
+  name = "code.cloudfoundry.org/tlsconfig"
+  packages = ["."]
+  pruneopts = ""
+  revision = "07274a700fb4c760fba249bb06f682a8c08ef202"
+
+[[projects]]
+  branch = "master"
   digest = "1:50d6e579ed67b416c3cfdefa804675853686e4c67a38d2df19b45340b3665028"
   name = "code.cloudfoundry.org/tps"
   packages = ["cc_client"]
@@ -590,6 +598,7 @@
     ".",
     "format",
     "gbytes",
+    "gexec",
     "ghttp",
     "gstruct",
     "gstruct/errors",
@@ -1233,6 +1242,7 @@
     "code.cloudfoundry.org/lager/lagerctx",
     "code.cloudfoundry.org/lager/lagertest",
     "code.cloudfoundry.org/runtimeschema/cc_messages",
+    "code.cloudfoundry.org/tlsconfig",
     "code.cloudfoundry.org/tps/cc_client",
     "github.com/buildpack/packs",
     "github.com/buildpack/packs/cf",
@@ -1251,6 +1261,7 @@
     "github.com/nats-io/go-nats",
     "github.com/onsi/ginkgo",
     "github.com/onsi/gomega",
+    "github.com/onsi/gomega/gexec",
     "github.com/onsi/gomega/ghttp",
     "github.com/onsi/gomega/gstruct",
     "github.com/pkg/errors",

@@ -22,8 +22,11 @@ const (
 	EnvAPIAddress         = "API_ADDRESS"
 	EnvEiriniAddress      = "EIRINI_ADDRESS"
 	EnvCertsPath          = "EIRINI_CERTS_PATH"
+	EnvBuildpacksDir      = "EIRINI_BUILDPACKS_DIR"
 
 	RegisteredRoutes = "routes"
+
+	RecipeBuildPacksDir = "/var/lib/buildpacks"
 
 	CCUploaderInternalURL = "cc-uploader.service.cf.internal"
 	CCCertsMountPath      = "/etc/config/certs"

@@ -13,8 +13,7 @@ import (
 )
 
 const (
-	buildPacksDir = "/var/lib/buildpacks"
-	workspaceDir  = "/workspace"
+	workspaceDir = "/workspace"
 )
 
 func main() {
@@ -24,6 +23,11 @@ func main() {
 	eiriniAddress := os.Getenv(eirini.EnvEiriniAddress)
 	appBitsDownloadURL := os.Getenv(eirini.EnvDownloadURL)
 	buildpacksJSON := os.Getenv(eirini.EnvBuildpacks)
+
+	buildPacksDir, ok := os.LookupEnv(eirini.EnvBuildpacksDir)
+	if !ok {
+		buildPacksDir = eirini.RecipeBuildPacksDir
+	}
 
 	certPath, ok := os.LookupEnv(eirini.EnvCertsPath)
 	if !ok {

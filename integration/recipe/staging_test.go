@@ -1,13 +1,18 @@
 package recipe_test
 
 import (
+	"encoding/json"
 	"io/ioutil"
 	"net/http"
 	"os"
 	"os/exec"
+	"path/filepath"
+
+	"code.cloudfoundry.org/eirini/recipe"
+	"code.cloudfoundry.org/urljoiner"
 
 	"code.cloudfoundry.org/eirini"
-
+	"code.cloudfoundry.org/tlsconfig"
 	"github.com/onsi/gomega/gexec"
 
 	. "github.com/onsi/ginkgo"
@@ -17,15 +22,32 @@ import (
 
 var _ = FDescribe("StagingText", func() {
 
+	const (
+		stagingGUID        = "5b00de6b-d8f4-476b-b070-303367b46cef"
+		completionCallback = "url://some_endpoint"
+	)
+
 	var (
 		err            error
 		server         *ghttp.Server
 		appbitBytes    []byte
 		buildpackBytes []byte
 		session        *gexec.Session
+		buildpacks     []recipe.Buildpack
+		buildpacksDir  string
 	)
 
 	BeforeEach(func() {
+
+		buildpacksDir, err = ioutil.TempDir("", "buildpacks")
+		Expect(err).NotTo(HaveOccurred())
+
+		err = os.Setenv(eirini.EnvStagingGUID, stagingGUID)
+		Expect(err).NotTo(HaveOccurred())
+		err = os.Setenv(eirini.EnvCompletionCallback, completionCallback)
+		Expect(err).NotTo(HaveOccurred())
+		err = os.Setenv(eirini.EnvBuildpacksDir, buildpacksDir)
+		Expect(err).NotTo(HaveOccurred())
 
 		appbitBytes, err = ioutil.ReadFile("testdata/catnip")
 		Expect(err).NotTo(HaveOccurred())
@@ -33,7 +55,24 @@ var _ = FDescribe("StagingText", func() {
 		buildpackBytes, err = ioutil.ReadFile("testdata/binary-buildpack-cflinuxfs2-v1.0.31.zip")
 		Expect(err).NotTo(HaveOccurred())
 
-		server = ghttp.NewServer()
+		certsPath, err := filepath.Abs("testdata/certs")
+		Expect(err).NotTo(HaveOccurred())
+
+		certPath := filepath.Join(certsPath, "cc-server-crt")
+		keyPath := filepath.Join(certsPath, "cc-server-crt-key")
+		caCertPath := filepath.Join(certsPath, "internal-ca-cert")
+
+		tlsConfig, err := tlsconfig.Build(
+			tlsconfig.WithInternalServiceDefaults(),
+			tlsconfig.WithIdentityFromFile(certPath, keyPath),
+		).Server(
+			tlsconfig.WithClientAuthenticationFromFile(caCertPath),
+		)
+		Expect(err).NotTo(HaveOccurred())
+
+		server = ghttp.NewUnstartedServer()
+		server.HTTPTestServer.TLS = tlsConfig
+
 		server.AppendHandlers(
 
 			// Downloader
@@ -57,12 +96,39 @@ var _ = FDescribe("StagingText", func() {
 			),
 		)
 
-		err = os.Setenv(eirini.EnvCertsPath, tempCertsPath)
+		server.Start()
+
+		buildpacks = []recipe.Buildpack{
+			{
+				Name: "binary_buildpack",
+				Key:  "binary_buildpack",
+				URL:  urljoiner.Join(server.URL(), "/my-buildpack"),
+			},
+		}
+
+		buildpackJSON, err := json.Marshal(buildpacks)
+		Expect(err).ToNot(HaveOccurred())
+
+		err = os.Setenv(eirini.EnvBuildpacks, string(buildpackJSON))
+		Expect(err).ToNot(HaveOccurred())
+
+		err = os.Setenv(eirini.EnvCertsPath, certsPath)
 		Expect(err).ToNot(HaveOccurred())
 	})
 
 	AfterEach(func() {
+		err = os.RemoveAll(buildpacksDir)
+		Expect(err).ToNot(HaveOccurred())
+
 		err = os.Unsetenv(eirini.EnvCertsPath)
+		Expect(err).ToNot(HaveOccurred())
+		err = os.Unsetenv(eirini.EnvStagingGUID)
+		Expect(err).NotTo(HaveOccurred())
+		err = os.Unsetenv(eirini.EnvCompletionCallback)
+		Expect(err).NotTo(HaveOccurred())
+		err = os.Unsetenv(eirini.EnvBuildpacksDir)
+		Expect(err).NotTo(HaveOccurred())
+		err = os.Unsetenv(eirini.EnvBuildpacks)
 		Expect(err).ToNot(HaveOccurred())
 	})
 
@@ -81,6 +147,17 @@ var _ = FDescribe("StagingText", func() {
 
 			It("installs the buildpack json", func() {
 
+				expectedFile := filepath.Join(buildpacksDir, "config.json")
+				Expect(expectedFile).To(BeARegularFile())
+
+				actualBytes, err := ioutil.ReadFile(expectedFile)
+				Expect(err).ToNot(HaveOccurred())
+
+				var actualBuildpacks []recipe.Buildpack
+				err = json.Unmarshal(actualBytes, &actualBuildpacks)
+				Expect(err).ToNot(HaveOccurred())
+
+				Expect(actualBuildpacks).To(Equal(buildpacks))
 			})
 
 			It("installs the binary buildpack", func() {
