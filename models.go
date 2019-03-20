@@ -21,6 +21,7 @@ const (
 	EnvCfPassword         = "CF_PASSWORD"
 	EnvAPIAddress         = "API_ADDRESS"
 	EnvEiriniAddress      = "EIRINI_ADDRESS"
+	EnvCertsPath          = "EIRINI_CERTS_PATH"
 
 	RegisteredRoutes = "routes"
 

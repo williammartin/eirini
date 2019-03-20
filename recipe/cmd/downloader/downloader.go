@@ -25,9 +25,14 @@ func main() {
 	appBitsDownloadURL := os.Getenv(eirini.EnvDownloadURL)
 	buildpacksJSON := os.Getenv(eirini.EnvBuildpacks)
 
+	certPath, ok := os.LookupEnv(eirini.EnvCertsPath)
+	if !ok {
+		certPath = eirini.CCCertsMountPath
+	}
+
 	responder := recipe.NewResponder(stagingGUID, completionCallback, eiriniAddress)
 
-	downloadClient, err := createDownloadHTTPClient()
+	downloadClient, err := createDownloadHTTPClient(certPath)
 	if err != nil {
 		fmt.Println(fmt.Sprintf("error creating http client: %s", err))
 		responder.RespondWithFailure(err)
@@ -65,10 +70,10 @@ func main() {
 	fmt.Println("Downloading completed")
 }
 
-func createDownloadHTTPClient() (*http.Client, error) {
-	apiCA := filepath.Join(eirini.CCCertsMountPath, eirini.CCInternalCACertName)
-	cert := filepath.Join(eirini.CCCertsMountPath, eirini.CCAPICertName)
-	key := filepath.Join(eirini.CCCertsMountPath, eirini.CCAPIKeyName)
+func createDownloadHTTPClient(certPath string) (*http.Client, error) {
+	apiCA := filepath.Join(certPath, eirini.CCInternalCACertName)
+	cert := filepath.Join(certPath, eirini.CCAPICertName)
+	key := filepath.Join(certPath, eirini.CCAPIKeyName)
 
 	return util.CreateTLSHTTPClient([]util.CertPaths{
 		{Crt: cert, Key: key, Ca: apiCA},
