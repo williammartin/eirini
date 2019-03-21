@@ -32,7 +32,7 @@ func main() {
 
 	workspaceDir, ok := os.LookupEnv(eirini.EnvWorkspaceDir)
 	if !ok {
-		certPath = eirini.RecipeWorkspaceDir
+		workspaceDir = eirini.RecipeWorkspaceDir
 	}
 
 	responder := recipe.NewResponder(stagingGUID, completionCallback, eiriniAddress)

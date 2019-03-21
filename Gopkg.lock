@@ -11,6 +11,17 @@
 
 [[projects]]
   branch = "master"
+  digest = "1:942075b99a531c68db759c309fab52994b79d3d18d6e21ca7896dd015399a321"
+  name = "code.cloudfoundry.org/archiver"
+  packages = [
+    "compressor",
+    "extractor",
+  ]
+  pruneopts = ""
+  revision = "e135af3d5a2a2c5a80d3c9b366669ac8ed18953b"
+
+[[projects]]
+  branch = "master"
   digest = "1:8621fb7c47961e5fd342600e055723b77494ca95fdd9cbec5b5e73fed486d7cf"
   name = "code.cloudfoundry.org/bbs"
   packages = [
@@ -25,7 +36,10 @@
   branch = "master"
   digest = "1:3bbc8a2ff6dc55c420ff6f371d497635e1a0ec23ceb20fb8da92788db86986af"
   name = "code.cloudfoundry.org/buildpackapplifecycle"
-  packages = ["."]
+  packages = [
+    ".",
+    "buildpackrunner",
+  ]
   pruneopts = ""
   revision = "928cda2ee7d6cb476865e1a79a98807f67bae882"
 
@@ -36,6 +50,14 @@
   packages = ["."]
   pruneopts = ""
   revision = "2aa6f33b730c79971cfc3c742f279195b0abc627"
+
+[[projects]]
+  branch = "master"
+  digest = "1:9df0b86d89b639c497ea2398db0e9a4891eaf9b6cae94661042ec8499e6dc848"
+  name = "code.cloudfoundry.org/cacheddownloader"
+  packages = ["."]
+  pruneopts = ""
+  revision = "0356a013195249fd40b970a0406536cd4d3235e1"
 
 [[projects]]
   digest = "1:46fec7599d3a19674f1f79c04f209c9230066c3edf4f7b7295d8fc300d33df1a"
@@ -1236,6 +1258,7 @@
   input-imports = [
     "code.cloudfoundry.org/bbs/models",
     "code.cloudfoundry.org/buildpackapplifecycle",
+    "code.cloudfoundry.org/buildpackapplifecycle/buildpackrunner",
     "code.cloudfoundry.org/cli/cf/appfiles",
     "code.cloudfoundry.org/go-loggregator",
     "code.cloudfoundry.org/lager",
@@ -1244,6 +1267,7 @@
     "code.cloudfoundry.org/runtimeschema/cc_messages",
     "code.cloudfoundry.org/tlsconfig",
     "code.cloudfoundry.org/tps/cc_client",
+    "code.cloudfoundry.org/urljoiner",
     "github.com/buildpack/packs",
     "github.com/buildpack/packs/cf",
     "github.com/buildpack/packs/heroku/app",

@@ -27,7 +27,6 @@ const (
 	EnvOutputDropletLocation     = "EIRINI_OUTPUT_DROPLET_LOCATION"
 	EnvOutputBuildArtifactsCache = "EIRINI_OUTPUT_BUILD_ARTIFACTS_CACHE"
 	EnvOutputMetadataLocation    = "EIRINI_OUTPUT_METADATA_LOCATION"
-	EnvPacksBuilderPath          = "EIRINI_PACKS_BUILDER_PATH"
 
 	RegisteredRoutes = "routes"
 
@@ -36,7 +35,6 @@ const (
 	RecipeOutputDropletLocation     = "/out/droplet.tgz"
 	RecipeOutputBuildArtifactsCache = "/cache/cache.tgz"
 	RecipeOutputMetadataLocation    = "/out/result.json"
-	RecipePacksBuilderPath          = "/packs/builder"
 
 	CCUploaderInternalURL = "cc-uploader.service.cf.internal"
 	CCCertsMountPath      = "/etc/config/certs"

@@ -62,9 +62,6 @@ var _ = FDescribe("StagingText", func() {
 		err = os.Setenv(eirini.EnvOutputBuildArtifactsCache, path.Join(cacheDir, "cache.tgz"))
 		Expect(err).NotTo(HaveOccurred())
 
-		err = os.Setenv(eirini.EnvPacksBuilderPath, binaries.PacksBuilderPath)
-		Expect(err).NotTo(HaveOccurred())
-
 		buildpacksDir, err = ioutil.TempDir("", "buildpacks")
 		Expect(err).NotTo(HaveOccurred())
 		err = os.Setenv(eirini.EnvBuildpacksDir, buildpacksDir)
@@ -153,13 +150,13 @@ var _ = FDescribe("StagingText", func() {
 	})
 
 	AfterEach(func() {
-		err = os.RemoveAll(buildpacksDir)
+		//err = os.RemoveAll(buildpacksDir)
 		Expect(err).ToNot(HaveOccurred())
-		err = os.RemoveAll(workspaceDir)
+		//err = os.RemoveAll(workspaceDir)
 		Expect(err).ToNot(HaveOccurred())
-		err = os.RemoveAll(outputDir)
+		//err = os.RemoveAll(outputDir)
 		Expect(err).ToNot(HaveOccurred())
-		err = os.RemoveAll(cacheDir)
+		//err = os.RemoveAll(cacheDir)
 		Expect(err).ToNot(HaveOccurred())
 
 		err = os.Unsetenv(eirini.EnvCertsPath)
@@ -183,8 +180,6 @@ var _ = FDescribe("StagingText", func() {
 		err = os.Unsetenv(eirini.EnvOutputBuildArtifactsCache)
 		Expect(err).NotTo(HaveOccurred())
 		err = os.Unsetenv(eirini.EnvEiriniAddress)
-		Expect(err).NotTo(HaveOccurred())
-		err = os.Unsetenv(eirini.EnvPacksBuilderPath)
 		Expect(err).NotTo(HaveOccurred())
 	})
 

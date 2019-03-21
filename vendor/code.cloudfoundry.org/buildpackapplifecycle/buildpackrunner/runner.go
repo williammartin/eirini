@@ -92,19 +92,27 @@ func (runner *Runner) Run() (string, error) {
 		}
 	}
 
+	fmt.Println("ISTHISWHEREIBELONG")
+
 	if err := runner.runFinalize(detectedBuildpackDir); err != nil {
 		return "", newDescriptiveError(err, buildpackapplifecycle.CompileFailMsg)
 	}
+
+	fmt.Println("ISTHISWHEREIBELONG")
 
 	startCommands, err := runner.readProcfile()
 	if err != nil {
 		return "", newDescriptiveError(err, "Failed to read command from Procfile")
 	}
 
+	fmt.Println("ISTHISWHEREIBELONG")
+
 	releaseInfo, err := runner.release(detectedBuildpackDir, startCommands)
 	if err != nil {
 		return "", newDescriptiveError(err, buildpackapplifecycle.ReleaseFailMsg)
 	}
+
+	fmt.Println("ISTHISWHEREIBELONG")
 
 	if releaseInfo.DefaultProcessTypes["web"] == "" {
 		printError("No start command specified by buildpack or via Procfile.")
@@ -132,6 +140,8 @@ func (runner *Runner) Run() (string, error) {
 	if err != nil {
 		return "", newDescriptiveError(err, "Failed to encode generated metadata")
 	}
+
+	fmt.Println("ISTHISWHEREIBELONG")
 
 	for _, name := range []string{"tmp", "logs"} {
 		if err := os.MkdirAll(filepath.Join(runner.contentsDir, name), 0755); err != nil {
@@ -345,7 +355,9 @@ func (runner *Runner) runSupplyBuildpacks() (string, string, error) {
 			return "", "", newDescriptiveError(err, buildpackapplifecycle.SupplyFailMsg)
 		}
 
-		err = runner.run(exec.Command(filepath.Join(buildpackPath, "bin", "supply"), runner.config.BuildDir(), runner.supplyCachePath(buildpack), runner.depsDir, runner.config.DepsIndex(i)), os.Stdout)
+		cmd := exec.Command(filepath.Join(buildpackPath, "bin", "supply"), runner.config.BuildDir(), runner.supplyCachePath(buildpack), runner.depsDir, runner.config.DepsIndex(i))
+		fmt.Println(cmd.Args)
+		err = runner.run(cmd, os.Stdout)
 		if err != nil {
 			return "", "", newDescriptiveError(err, buildpackapplifecycle.SupplyFailMsg)
 		}
@@ -386,21 +398,32 @@ func (runner *Runner) runFinalize(buildpackPath string) error {
 		return newDescriptiveError(err, buildpackapplifecycle.FinalizeFailMsg)
 	}
 
+	fmt.Println("SUCCESS ", hasFinalize)
+
 	if hasFinalize {
 		hasSupply, err := hasSupply(buildpackPath)
 		if err != nil {
 			return newDescriptiveError(err, buildpackapplifecycle.SupplyFailMsg)
 		}
 
+		fmt.Println("SUCCESS ", hasSupply)
+
 		if hasSupply {
-			if err := runner.run(exec.Command(filepath.Join(buildpackPath, "bin", "supply"), runner.config.BuildDir(), cacheDir, runner.depsDir, depsIdx), os.Stdout); err != nil {
+			cmd := exec.Command(filepath.Join(buildpackPath, "bin", "supply"), runner.config.BuildDir(), cacheDir, runner.depsDir, depsIdx)
+			fmt.Println(cmd.Args)
+			if err := runner.run(cmd, os.Stdout); err != nil {
 				return newDescriptiveError(err, buildpackapplifecycle.SupplyFailMsg)
 			}
 		}
 
+		fmt.Println("SUCCESS BRO")
+
 		if err := runner.run(exec.Command(filepath.Join(buildpackPath, "bin", "finalize"), runner.config.BuildDir(), cacheDir, runner.depsDir, depsIdx, runner.profileDir), os.Stdout); err != nil {
 			return newDescriptiveError(err, buildpackapplifecycle.FinalizeFailMsg)
 		}
+
+		fmt.Println("SUCCESS BRO")
+
 	} else {
 		if len(runner.config.SupplyBuildpacks()) > 0 {
 			printError(buildpackapplifecycle.MissingFinalizeWarnMsg)
@@ -416,12 +439,18 @@ func (runner *Runner) runFinalize(buildpackPath string) error {
 		}
 	}
 
+	fmt.Println("SUCCESS")
+
 	return nil
 }
 
 // returns buildpack name,  buildpack path, buildpack detect output, ok
 func (runner *Runner) detect() (string, string, string, bool) {
 	for _, buildpack := range runner.config.BuildpackOrder() {
+
+
+		fmt.Println("HEYHEYHYE")
+		fmt.Println(buildpack)
 
 		buildpackPath, err := runner.buildpackPath(buildpack)
 		if err != nil {
@@ -438,8 +467,15 @@ func (runner *Runner) detect() (string, string, string, bool) {
 			continue
 		}
 
+		fmt.Println("HEYHEYHYE")
+		fmt.Println(buildpackPath)
+
 		output := new(bytes.Buffer)
 		err = runner.run(exec.Command(filepath.Join(buildpackPath, "bin", "detect"), runner.config.BuildDir()), output)
+
+		fmt.Println(filepath.Abs(runner.config.BuildDir()))
+		fmt.Println(output.String())
+		fmt.Println(err)
 
 		if err == nil {
 			return buildpack, buildpackPath, strings.TrimRight(output.String(), "\r\n"), true

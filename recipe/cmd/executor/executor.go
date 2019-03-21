@@ -33,30 +33,19 @@ func main() {
 		outputMetadataLocation = eirini.RecipeOutputMetadataLocation
 	}
 
-	packsBuilderPath, ok := os.LookupEnv(eirini.EnvPacksBuilderPath)
+	workspaceDir, ok := os.LookupEnv(eirini.EnvWorkspaceDir)
 	if !ok {
-		packsBuilderPath = eirini.RecipePacksBuilderPath
+		workspaceDir = eirini.RecipeWorkspaceDir
 	}
 
 	responder := recipe.NewResponder(stagingGUID, completionCallback, eiriniAddress)
 
-	commander := &recipe.IOCommander{
-		Stdout: os.Stdout,
-		Stderr: os.Stderr,
-		Stdin:  os.Stdin,
-	}
-
-	packsConf := recipe.PacksBuilderConf{
-		PacksBuilderPath:          packsBuilderPath,
+	executor := &recipe.PacksExecutor{
+		BuildDir:                  workspaceDir,
 		BuildpacksDir:             buildpacksDir,
 		OutputDropletLocation:     outputDropletLocation,
 		OutputBuildArtifactsCache: outputBuildArtifactsCache,
 		OutputMetadataLocation:    outputMetadataLocation,
-	}
-
-	executor := &recipe.PacksExecutor{
-		Conf:      packsConf,
-		Commander: commander,
 	}
 
 	err := executor.ExecuteRecipe()
