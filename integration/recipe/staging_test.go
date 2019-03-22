@@ -8,8 +8,11 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
+	"os/user"
 	"path"
 	"path/filepath"
+	"strconv"
+	"syscall"
 
 	"code.cloudfoundry.org/eirini/recipe"
 	"code.cloudfoundry.org/urljoiner"
@@ -41,13 +44,21 @@ var _ = FDescribe("StagingText", func() {
 		workspaceDir   string
 		outputDir      string
 		cacheDir       string
+		certsPath      string
+		uid            int
+		gid            int
 	)
 
 	BeforeEach(func() {
+		uid, gid, err = getIds("vcap", "vcap")
+		Expect(err).NotTo(HaveOccurred())
 
 		workspaceDir, err = ioutil.TempDir("", "workspace")
 		Expect(err).NotTo(HaveOccurred())
 		err = os.Setenv(eirini.EnvWorkspaceDir, workspaceDir)
+		Expect(err).NotTo(HaveOccurred())
+
+		err = chown(workspaceDir, "vcap", "vcap")
 		Expect(err).NotTo(HaveOccurred())
 
 		outputDir, err = ioutil.TempDir("", "out")
@@ -57,9 +68,15 @@ var _ = FDescribe("StagingText", func() {
 		err = os.Setenv(eirini.EnvOutputMetadataLocation, path.Join(outputDir, "result.json"))
 		Expect(err).NotTo(HaveOccurred())
 
+		err = chown(outputDir, "vcap", "vcap")
+		Expect(err).NotTo(HaveOccurred())
+
 		cacheDir, err = ioutil.TempDir("", "cache")
 		Expect(err).NotTo(HaveOccurred())
 		err = os.Setenv(eirini.EnvOutputBuildArtifactsCache, path.Join(cacheDir, "cache.tgz"))
+		Expect(err).NotTo(HaveOccurred())
+
+		err = chown(cacheDir, "vcap", "vcap")
 		Expect(err).NotTo(HaveOccurred())
 
 		err = os.Setenv(eirini.EnvPacksBuilderPath, binaries.PacksBuilderPath)
@@ -68,6 +85,9 @@ var _ = FDescribe("StagingText", func() {
 		buildpacksDir, err = ioutil.TempDir("", "buildpacks")
 		Expect(err).NotTo(HaveOccurred())
 		err = os.Setenv(eirini.EnvBuildpacksDir, buildpacksDir)
+		Expect(err).NotTo(HaveOccurred())
+
+		err = chown(buildpacksDir, "vcap", "vcap")
 		Expect(err).NotTo(HaveOccurred())
 
 		err = os.Setenv(eirini.EnvStagingGUID, stagingGUID)
@@ -82,7 +102,7 @@ var _ = FDescribe("StagingText", func() {
 		buildpackBytes, err = ioutil.ReadFile("testdata/binary-buildpack-cflinuxfs2-v1.0.31.zip")
 		Expect(err).NotTo(HaveOccurred())
 
-		certsPath, err := filepath.Abs("testdata/certs")
+		certsPath, err = filepath.Abs("testdata/certs")
 		Expect(err).NotTo(HaveOccurred())
 
 		certPath := filepath.Join(certsPath, "cc-server-crt")
@@ -99,68 +119,17 @@ var _ = FDescribe("StagingText", func() {
 
 		server = ghttp.NewUnstartedServer()
 		server.HTTPTestServer.TLS = tlsConfig
-
-		responseUrl := fmt.Sprintf("stage/%s/completed", stagingGUID)
-
-		server.AppendHandlers(
-
-			// Downloader
-			ghttp.CombineHandlers(
-				ghttp.VerifyRequest("GET", "/my-buildpack"),
-				ghttp.RespondWith(http.StatusOK, buildpackBytes),
-			),
-			ghttp.CombineHandlers(
-				ghttp.VerifyRequest("GET", "/my-app-bits"),
-				ghttp.RespondWith(http.StatusOK, appbitBytes),
-			),
-
-			// Uploader
-			ghttp.CombineHandlers(
-				ghttp.VerifyRequest("PUT", responseUrl),
-				ghttp.RespondWith(http.StatusOK, ""),
-				ghttp.VerifyBody([]byte("")),
-			),
-			ghttp.CombineHandlers(
-				ghttp.VerifyRequest("POST", "/my-droplet"),
-				ghttp.RespondWith(http.StatusOK, ""),
-			),
-		)
-
-		server.Start()
-
-		err = os.Setenv(eirini.EnvEiriniAddress, server.URL())
-		Expect(err).NotTo(HaveOccurred())
-
-		err = os.Setenv(eirini.EnvDownloadURL, urljoiner.Join(server.URL(), "my-app-bits"))
-		Expect(err).ToNot(HaveOccurred())
-
-		buildpacks = []recipe.Buildpack{
-			{
-				Name: "binary_buildpack",
-				Key:  "binary_buildpack",
-				URL:  urljoiner.Join(server.URL(), "/my-buildpack"),
-			},
-		}
-
-		buildpackJSON, err := json.Marshal(buildpacks)
-		Expect(err).ToNot(HaveOccurred())
-
-		err = os.Setenv(eirini.EnvBuildpacks, string(buildpackJSON))
-		Expect(err).ToNot(HaveOccurred())
-
-		err = os.Setenv(eirini.EnvCertsPath, certsPath)
-		Expect(err).ToNot(HaveOccurred())
 	})
 
 	AfterEach(func() {
-		err = os.RemoveAll(buildpacksDir)
-		Expect(err).ToNot(HaveOccurred())
-		err = os.RemoveAll(workspaceDir)
-		Expect(err).ToNot(HaveOccurred())
-		err = os.RemoveAll(outputDir)
-		Expect(err).ToNot(HaveOccurred())
-		err = os.RemoveAll(cacheDir)
-		Expect(err).ToNot(HaveOccurred())
+		// err = os.RemoveAll(buildpacksDir)
+		// Expect(err).ToNot(HaveOccurred())
+		// err = os.RemoveAll(workspaceDir)
+		// Expect(err).ToNot(HaveOccurred())
+		// err = os.RemoveAll(outputDir)
+		// Expect(err).ToNot(HaveOccurred())
+		// err = os.RemoveAll(cacheDir)
+		// Expect(err).ToNot(HaveOccurred())
 
 		err = os.Unsetenv(eirini.EnvCertsPath)
 		Expect(err).ToNot(HaveOccurred())
@@ -189,8 +158,43 @@ var _ = FDescribe("StagingText", func() {
 	})
 
 	Context("when a droplet needs building...", func() {
-
 		Context("downloads the app and buildpacks", func() {
+			BeforeEach(func() {
+				server.AppendHandlers(
+					ghttp.CombineHandlers(
+						ghttp.VerifyRequest("GET", "/my-buildpack"),
+						ghttp.RespondWith(http.StatusOK, buildpackBytes),
+					),
+					ghttp.CombineHandlers(
+						ghttp.VerifyRequest("GET", "/my-app-bits"),
+						ghttp.RespondWith(http.StatusOK, appbitBytes),
+					),
+				)
+				server.Start()
+
+				err = os.Setenv(eirini.EnvEiriniAddress, server.URL())
+				Expect(err).NotTo(HaveOccurred())
+
+				err = os.Setenv(eirini.EnvDownloadURL, urljoiner.Join(server.URL(), "my-app-bits"))
+				Expect(err).ToNot(HaveOccurred())
+
+				buildpacks = []recipe.Buildpack{
+					{
+						Name: "binary_buildpack",
+						Key:  "binary_buildpack",
+						URL:  urljoiner.Join(server.URL(), "/my-buildpack"),
+					},
+				}
+
+				buildpackJSON, err := json.Marshal(buildpacks)
+				Expect(err).ToNot(HaveOccurred())
+
+				err = os.Setenv(eirini.EnvBuildpacks, string(buildpackJSON))
+				Expect(err).ToNot(HaveOccurred())
+
+				err = os.Setenv(eirini.EnvCertsPath, certsPath)
+				Expect(err).ToNot(HaveOccurred())
+			})
 
 			JustBeforeEach(func() {
 				cmd := exec.Command(binaries.DownloaderPath)
@@ -230,31 +234,145 @@ var _ = FDescribe("StagingText", func() {
 				Expect(err).NotTo(HaveOccurred())
 				Expect(actualBytes).To(Equal(expectedBytes))
 			})
+		})
 
-			Context("creates the droplet", func() {
+		Context("creates the droplet", func() {
+			BeforeEach(func() {
+				server.AppendHandlers(
+					// Downloader
+					ghttp.CombineHandlers(
+						ghttp.VerifyRequest("GET", "/my-buildpack"),
+						ghttp.RespondWith(http.StatusOK, buildpackBytes),
+					),
+					ghttp.CombineHandlers(
+						ghttp.VerifyRequest("GET", "/my-app-bits"),
+						ghttp.RespondWith(http.StatusOK, appbitBytes),
+					),
+				)
 
-				JustBeforeEach(func() {
-					cmd := exec.Command(binaries.ExecutorPath)
-					session, err = gexec.Start(cmd, GinkgoWriter, GinkgoWriter)
-				})
+				server.Start()
 
-				It("Should create the droplet", func() {
-					Expect(path.Join(outputDir, "droplet.tgz")).To(BeARegularFile())
-				})
+				err = os.Setenv(eirini.EnvEiriniAddress, server.URL())
+				Expect(err).NotTo(HaveOccurred())
 
-				It("Should create the output metadata", func() {
-					Expect(path.Join(outputDir, "result.json")).To(BeARegularFile())
-				})
+				err = os.Setenv(eirini.EnvDownloadURL, urljoiner.Join(server.URL(), "my-app-bits"))
+				Expect(err).ToNot(HaveOccurred())
 
-				Context("uploads the droplet", func() {
+				buildpacks = []recipe.Buildpack{
+					{
+						Name: "binary_buildpack",
+						Key:  "binary_buildpack",
+						URL:  urljoiner.Join(server.URL(), "/my-buildpack"),
+					},
+				}
 
-					JustBeforeEach(func() {
-						//cmd := exec.Command(binaries.UploaderPath)
-						//session, err = gexec.Start(cmd, GinkgoWriter, GinkgoWriter)
-					})
+				buildpackJSON, err := json.Marshal(buildpacks)
+				Expect(err).ToNot(HaveOccurred())
 
-				})
+				err = os.Setenv(eirini.EnvBuildpacks, string(buildpackJSON))
+				Expect(err).ToNot(HaveOccurred())
+
+				err = os.Setenv(eirini.EnvCertsPath, certsPath)
+				Expect(err).ToNot(HaveOccurred())
 			})
+
+			JustBeforeEach(func() {
+				cmd := exec.Command(binaries.DownloaderPath)
+				cmd.SysProcAttr = &syscall.SysProcAttr{}
+				cmd.SysProcAttr.Credential = &syscall.Credential{Uid: uint32(uid), Gid: uint32(gid)}
+				session, err = gexec.Start(cmd, GinkgoWriter, GinkgoWriter)
+				Eventually(session, 30).Should(gexec.Exit())
+				Expect(err).NotTo(HaveOccurred())
+
+				cmd = exec.Command(binaries.ExecutorPath)
+				cmd.SysProcAttr = &syscall.SysProcAttr{}
+				cmd.SysProcAttr.Credential = &syscall.Credential{Uid: uint32(uid), Gid: uint32(gid)}
+				session, err = gexec.Start(cmd, GinkgoWriter, GinkgoWriter)
+				Eventually(session, 30).Should(gexec.Exit())
+			})
+
+			FIt("Should create the droplet", func() {
+				Expect(path.Join(outputDir, "droplet.tgz")).To(BeARegularFile())
+			})
+
+			It("Should create the output metadata", func() {
+				Expect(path.Join(outputDir, "result.json")).To(BeARegularFile())
+			})
+		})
+
+		Context("uploads the droplet", func() {
+			BeforeEach(func() {
+				responseUrl := fmt.Sprintf("stage/%s/completed", stagingGUID)
+
+				server.AppendHandlers(
+					// Downloader
+					ghttp.CombineHandlers(
+						ghttp.VerifyRequest("GET", "/my-buildpack"),
+						ghttp.RespondWith(http.StatusOK, buildpackBytes),
+					),
+					ghttp.CombineHandlers(
+						ghttp.VerifyRequest("GET", "/my-app-bits"),
+						ghttp.RespondWith(http.StatusOK, appbitBytes),
+					),
+
+					// Uploader
+					ghttp.CombineHandlers(
+						ghttp.VerifyRequest("PUT", responseUrl),
+						ghttp.RespondWith(http.StatusOK, ""),
+						ghttp.VerifyBody([]byte("")),
+					),
+					ghttp.CombineHandlers(
+						ghttp.VerifyRequest("POST", "/my-droplet"),
+						ghttp.RespondWith(http.StatusOK, ""),
+					),
+				)
+
+				server.Start()
+			})
+
+			JustBeforeEach(func() {
+				//cmd := exec.Command(binaries.UploaderPath)
+				//session, err = gexec.Start(cmd, GinkgoWriter, GinkgoWriter)
+			})
+
 		})
 	})
 })
+
+func chown(path, username, group string) error {
+	uid, gid, err := getIds(username, group)
+	if err != nil {
+		return err
+	}
+
+	err = os.Chown(path, uid, gid)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func getIds(username, group string) (uid int, gid int, err error) {
+	g, err := user.LookupGroup(group)
+	if err != nil {
+		return -1, -1, err
+	}
+
+	u, err := user.Lookup(username)
+	if err != nil {
+		return -1, -1, err
+	}
+
+	uid, err = strconv.Atoi(u.Uid)
+	if err != nil {
+		return -1, -1, err
+	}
+
+	gid, err = strconv.Atoi(g.Gid)
+	if err != nil {
+		return -1, -1, err
+	}
+
+	return uid, gid, nil
+}
