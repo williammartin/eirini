@@ -22,6 +22,7 @@ func (c *IOCommander) Exec(cmd string, args ...string) error {
 
 type PacksBuilderConf struct {
 	PacksBuilderPath          string
+	BuildDir                  string
 	BuildpacksDir             string
 	OutputDropletLocation     string
 	OutputBuildArtifactsCache string
@@ -35,6 +36,7 @@ type PacksExecutor struct {
 
 func (e *PacksExecutor) ExecuteRecipe() error {
 	args := []string{
+		"-buildDir", e.Conf.BuildDir,
 		"-buildpacksDir", e.Conf.BuildpacksDir,
 		"-outputDroplet", e.Conf.OutputDropletLocation,
 		"-outputBuildArtifactsCache", e.Conf.OutputBuildArtifactsCache,

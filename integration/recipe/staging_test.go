@@ -12,7 +12,6 @@ import (
 	"path"
 	"path/filepath"
 	"strconv"
-	"syscall"
 
 	"code.cloudfoundry.org/eirini/recipe"
 	"code.cloudfoundry.org/urljoiner"
@@ -45,20 +44,15 @@ var _ = FDescribe("StagingText", func() {
 		outputDir      string
 		cacheDir       string
 		certsPath      string
-		uid            int
-		gid            int
 	)
 
 	BeforeEach(func() {
-		uid, gid, err = getIds("vcap", "vcap")
-		Expect(err).NotTo(HaveOccurred())
-
 		workspaceDir, err = ioutil.TempDir("", "workspace")
 		Expect(err).NotTo(HaveOccurred())
 		err = os.Setenv(eirini.EnvWorkspaceDir, workspaceDir)
 		Expect(err).NotTo(HaveOccurred())
 
-		err = chown(workspaceDir, "vcap", "vcap")
+		err = chownR(workspaceDir, "vcap", "vcap")
 		Expect(err).NotTo(HaveOccurred())
 
 		outputDir, err = ioutil.TempDir("", "out")
@@ -68,7 +62,7 @@ var _ = FDescribe("StagingText", func() {
 		err = os.Setenv(eirini.EnvOutputMetadataLocation, path.Join(outputDir, "result.json"))
 		Expect(err).NotTo(HaveOccurred())
 
-		err = chown(outputDir, "vcap", "vcap")
+		err = chownR(outputDir, "vcap", "vcap")
 		Expect(err).NotTo(HaveOccurred())
 
 		cacheDir, err = ioutil.TempDir("", "cache")
@@ -76,7 +70,7 @@ var _ = FDescribe("StagingText", func() {
 		err = os.Setenv(eirini.EnvOutputBuildArtifactsCache, path.Join(cacheDir, "cache.tgz"))
 		Expect(err).NotTo(HaveOccurred())
 
-		err = chown(cacheDir, "vcap", "vcap")
+		err = chownR(cacheDir, "vcap", "vcap")
 		Expect(err).NotTo(HaveOccurred())
 
 		err = os.Setenv(eirini.EnvPacksBuilderPath, binaries.PacksBuilderPath)
@@ -87,7 +81,7 @@ var _ = FDescribe("StagingText", func() {
 		err = os.Setenv(eirini.EnvBuildpacksDir, buildpacksDir)
 		Expect(err).NotTo(HaveOccurred())
 
-		err = chown(buildpacksDir, "vcap", "vcap")
+		err = chownR(buildpacksDir, "vcap", "vcap")
 		Expect(err).NotTo(HaveOccurred())
 
 		err = os.Setenv(eirini.EnvStagingGUID, stagingGUID)
@@ -122,14 +116,14 @@ var _ = FDescribe("StagingText", func() {
 	})
 
 	AfterEach(func() {
-		// err = os.RemoveAll(buildpacksDir)
-		// Expect(err).ToNot(HaveOccurred())
-		// err = os.RemoveAll(workspaceDir)
-		// Expect(err).ToNot(HaveOccurred())
-		// err = os.RemoveAll(outputDir)
-		// Expect(err).ToNot(HaveOccurred())
-		// err = os.RemoveAll(cacheDir)
-		// Expect(err).ToNot(HaveOccurred())
+		err = os.RemoveAll(buildpacksDir)
+		Expect(err).ToNot(HaveOccurred())
+		err = os.RemoveAll(workspaceDir)
+		Expect(err).ToNot(HaveOccurred())
+		err = os.RemoveAll(outputDir)
+		Expect(err).ToNot(HaveOccurred())
+		err = os.RemoveAll(cacheDir)
+		Expect(err).ToNot(HaveOccurred())
 
 		err = os.Unsetenv(eirini.EnvCertsPath)
 		Expect(err).ToNot(HaveOccurred())
@@ -158,7 +152,7 @@ var _ = FDescribe("StagingText", func() {
 	})
 
 	Context("when a droplet needs building...", func() {
-		Context("downloads the app and buildpacks", func() {
+		Context("download", func() {
 			BeforeEach(func() {
 				server.AppendHandlers(
 					ghttp.CombineHandlers(
@@ -236,10 +230,14 @@ var _ = FDescribe("StagingText", func() {
 			})
 		})
 
-		Context("creates the droplet", func() {
+		Context("execute", func() {
 			BeforeEach(func() {
+				appbitBytes, err = ioutil.ReadFile("testdata/dora.zip")
+				Expect(err).NotTo(HaveOccurred())
+
+				buildpackBytes, err = ioutil.ReadFile("testdata/ruby-buildpack-cflinuxfs2-v1.7.35.zip")
+				Expect(err).NotTo(HaveOccurred())
 				server.AppendHandlers(
-					// Downloader
 					ghttp.CombineHandlers(
 						ghttp.VerifyRequest("GET", "/my-buildpack"),
 						ghttp.RespondWith(http.StatusOK, buildpackBytes),
@@ -249,7 +247,6 @@ var _ = FDescribe("StagingText", func() {
 						ghttp.RespondWith(http.StatusOK, appbitBytes),
 					),
 				)
-
 				server.Start()
 
 				err = os.Setenv(eirini.EnvEiriniAddress, server.URL())
@@ -278,24 +275,17 @@ var _ = FDescribe("StagingText", func() {
 
 			JustBeforeEach(func() {
 				cmd := exec.Command(binaries.DownloaderPath)
-				cmd.SysProcAttr = &syscall.SysProcAttr{}
-				cmd.SysProcAttr.Credential = &syscall.Credential{Uid: uint32(uid), Gid: uint32(gid)}
 				session, err = gexec.Start(cmd, GinkgoWriter, GinkgoWriter)
-				Eventually(session, 30).Should(gexec.Exit())
+				Eventually(session).Should(gexec.Exit())
 				Expect(err).NotTo(HaveOccurred())
 
 				cmd = exec.Command(binaries.ExecutorPath)
-				cmd.SysProcAttr = &syscall.SysProcAttr{}
-				cmd.SysProcAttr.Credential = &syscall.Credential{Uid: uint32(uid), Gid: uint32(gid)}
 				session, err = gexec.Start(cmd, GinkgoWriter, GinkgoWriter)
-				Eventually(session, 30).Should(gexec.Exit())
+				Eventually(session, 80).Should(gexec.Exit())
 			})
 
-			FIt("Should create the droplet", func() {
+			It("should create the droplet and output metadata", func() {
 				Expect(path.Join(outputDir, "droplet.tgz")).To(BeARegularFile())
-			})
-
-			It("Should create the output metadata", func() {
 				Expect(path.Join(outputDir, "result.json")).To(BeARegularFile())
 			})
 		})
@@ -339,17 +329,18 @@ var _ = FDescribe("StagingText", func() {
 	})
 })
 
-func chown(path, username, group string) error {
+func chownR(path, username, group string) error {
 	uid, gid, err := getIds(username, group)
 	if err != nil {
 		return err
 	}
 
-	err = os.Chown(path, uid, gid)
-	if err != nil {
+	return filepath.Walk(path, func(name string, info os.FileInfo, err error) error {
+		if err == nil {
+			err = os.Chown(name, uid, gid)
+		}
 		return err
-	}
-
+	})
 	return nil
 }
 
@@ -375,4 +366,15 @@ func getIds(username, group string) (uid int, gid int, err error) {
 	}
 
 	return uid, gid, nil
+}
+
+func chownBinaries(binaries *BinaryPaths, username, group string) {
+	err := chownR(binaries.DownloaderPath, username, group)
+	Expect(err).NotTo(HaveOccurred())
+	err = chownR(binaries.PacksBuilderPath, username, group)
+	Expect(err).NotTo(HaveOccurred())
+	err = chownR(binaries.ExecutorPath, username, group)
+	Expect(err).NotTo(HaveOccurred())
+	err = chownR(binaries.UploaderPath, username, group)
+	Expect(err).NotTo(HaveOccurred())
 }

@@ -38,6 +38,11 @@ func main() {
 		packsBuilderPath = eirini.RecipePacksBuilderPath
 	}
 
+	buildDir, ok := os.LookupEnv(eirini.EnvWorkspaceDir)
+	if !ok {
+		buildDir = eirini.RecipeWorkspaceDir
+	}
+
 	responder := recipe.NewResponder(stagingGUID, completionCallback, eiriniAddress)
 
 	commander := &recipe.IOCommander{
@@ -48,6 +53,7 @@ func main() {
 
 	packsConf := recipe.PacksBuilderConf{
 		PacksBuilderPath:          packsBuilderPath,
+		BuildDir:                  buildDir,
 		BuildpacksDir:             buildpacksDir,
 		OutputDropletLocation:     outputDropletLocation,
 		OutputBuildArtifactsCache: outputBuildArtifactsCache,
