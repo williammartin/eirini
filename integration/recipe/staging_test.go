@@ -16,6 +16,7 @@ import (
 	"code.cloudfoundry.org/eirini/recipe"
 	"code.cloudfoundry.org/urljoiner"
 
+	"code.cloudfoundry.org/bbs/models"
 	"code.cloudfoundry.org/eirini"
 	"code.cloudfoundry.org/tlsconfig"
 	"github.com/onsi/gomega/gexec"
@@ -90,12 +91,6 @@ var _ = FDescribe("StagingText", func() {
 		err = os.Setenv(eirini.EnvCompletionCallback, completionCallback)
 		Expect(err).NotTo(HaveOccurred())
 
-		appbitBytes, err = ioutil.ReadFile("testdata/catnip.zip")
-		Expect(err).NotTo(HaveOccurred())
-
-		buildpackBytes, err = ioutil.ReadFile("testdata/binary-buildpack-cflinuxfs2-v1.0.31.zip")
-		Expect(err).NotTo(HaveOccurred())
-
 		certsPath, err = filepath.Abs("testdata/certs")
 		Expect(err).NotTo(HaveOccurred())
 
@@ -151,9 +146,15 @@ var _ = FDescribe("StagingText", func() {
 		Expect(err).NotTo(HaveOccurred())
 	})
 
-	Context("when a droplet needs building...", func() {
+	FContext("when a droplet needs building...", func() {
 		Context("download", func() {
 			BeforeEach(func() {
+				appbitBytes, err = ioutil.ReadFile("testdata/fake-app.zip")
+				Expect(err).NotTo(HaveOccurred())
+
+				buildpackBytes, err = ioutil.ReadFile("testdata/ruby-buildpack-cflinuxfs2-v1.7.35.zip")
+				Expect(err).NotTo(HaveOccurred())
+
 				server.AppendHandlers(
 					ghttp.CombineHandlers(
 						ghttp.VerifyRequest("GET", "/my-buildpack"),
@@ -174,8 +175,8 @@ var _ = FDescribe("StagingText", func() {
 
 				buildpacks = []recipe.Buildpack{
 					{
-						Name: "binary_buildpack",
-						Key:  "binary_buildpack",
+						Name: "app_buildpack",
+						Key:  "app_buildpack",
 						URL:  urljoiner.Join(server.URL(), "/my-buildpack"),
 					},
 				}
@@ -201,7 +202,6 @@ var _ = FDescribe("StagingText", func() {
 			})
 
 			It("installs the buildpack json", func() {
-
 				expectedFile := filepath.Join(buildpacksDir, "config.json")
 				Expect(expectedFile).To(BeARegularFile())
 
@@ -216,15 +216,15 @@ var _ = FDescribe("StagingText", func() {
 			})
 
 			It("installs the binary buildpack", func() {
-				md5Hash := fmt.Sprintf("%x", md5.Sum([]byte("binary_buildpack")))
+				md5Hash := fmt.Sprintf("%x", md5.Sum([]byte("app_buildpack")))
 				expectedBuildpackPath := path.Join(buildpacksDir, md5Hash)
 				Expect(expectedBuildpackPath).To(BeADirectory())
 			})
 
 			It("places the app bits in the workspace", func() {
-				actualBytes, err := ioutil.ReadFile(path.Join(workspaceDir, "catnip"))
+				actualBytes, err := ioutil.ReadFile(path.Join(workspaceDir, "fake-app"))
 				Expect(err).NotTo(HaveOccurred())
-				expectedBytes, err := ioutil.ReadFile("testdata/catnip")
+				expectedBytes, err := ioutil.ReadFile("testdata/fake-app")
 				Expect(err).NotTo(HaveOccurred())
 				Expect(actualBytes).To(Equal(expectedBytes))
 			})
@@ -257,8 +257,8 @@ var _ = FDescribe("StagingText", func() {
 
 				buildpacks = []recipe.Buildpack{
 					{
-						Name: "binary_buildpack",
-						Key:  "binary_buildpack",
+						Name: "ruby_buildpack",
+						Key:  "ruby_buildpack",
 						URL:  urljoiner.Join(server.URL(), "/my-buildpack"),
 					},
 				}
@@ -285,14 +285,22 @@ var _ = FDescribe("StagingText", func() {
 			})
 
 			It("should create the droplet and output metadata", func() {
+				Expect(session.ExitCode()).To(BeZero())
+
 				Expect(path.Join(outputDir, "droplet.tgz")).To(BeARegularFile())
 				Expect(path.Join(outputDir, "result.json")).To(BeARegularFile())
 			})
 		})
 
-		Context("uploads the droplet", func() {
+		Context("upload", func() {
 			BeforeEach(func() {
-				responseUrl := fmt.Sprintf("stage/%s/completed", stagingGUID)
+				appbitBytes, err = ioutil.ReadFile("testdata/dora.zip")
+				Expect(err).NotTo(HaveOccurred())
+
+				buildpackBytes, err = ioutil.ReadFile("testdata/ruby-buildpack-cflinuxfs2-v1.7.35.zip")
+				Expect(err).NotTo(HaveOccurred())
+
+				responseUrl := fmt.Sprintf("/stage/%s/completed", stagingGUID)
 
 				server.AppendHandlers(
 					// Downloader
@@ -307,27 +315,83 @@ var _ = FDescribe("StagingText", func() {
 
 					// Uploader
 					ghttp.CombineHandlers(
-						ghttp.VerifyRequest("PUT", responseUrl),
-						ghttp.RespondWith(http.StatusOK, ""),
-						ghttp.VerifyBody([]byte("")),
-					),
-					ghttp.CombineHandlers(
 						ghttp.VerifyRequest("POST", "/my-droplet"),
 						ghttp.RespondWith(http.StatusOK, ""),
+					),
+					ghttp.CombineHandlers(
+						ghttp.VerifyRequest("PUT", responseUrl),
+						ghttp.RespondWith(http.StatusOK, ""),
+						ghttp.VerifyMimeType("application/json"),
+						verifyUploaderResponse(),
 					),
 				)
 
 				server.Start()
+
+				err = os.Setenv(eirini.EnvEiriniAddress, server.URL())
+				Expect(err).NotTo(HaveOccurred())
+
+				err = os.Setenv(eirini.EnvDropletUploadURL, urljoiner.Join(server.URL(), "my-droplet"))
+				Expect(err).ToNot(HaveOccurred())
+
+				err = os.Setenv(eirini.EnvDownloadURL, urljoiner.Join(server.URL(), "my-app-bits"))
+				Expect(err).ToNot(HaveOccurred())
+
+				buildpacks = []recipe.Buildpack{
+					{
+						Name: "ruby_buildpack",
+						Key:  "ruby_buildpack",
+						URL:  urljoiner.Join(server.URL(), "/my-buildpack"),
+					},
+				}
+
+				buildpackJSON, err := json.Marshal(buildpacks)
+				Expect(err).ToNot(HaveOccurred())
+
+				err = os.Setenv(eirini.EnvBuildpacks, string(buildpackJSON))
+				Expect(err).ToNot(HaveOccurred())
+
+				err = os.Setenv(eirini.EnvCertsPath, certsPath)
+				Expect(err).ToNot(HaveOccurred())
+
 			})
 
 			JustBeforeEach(func() {
-				//cmd := exec.Command(binaries.UploaderPath)
-				//session, err = gexec.Start(cmd, GinkgoWriter, GinkgoWriter)
+				cmd := exec.Command(binaries.DownloaderPath)
+				session, err = gexec.Start(cmd, GinkgoWriter, GinkgoWriter)
+				Eventually(session).Should(gexec.Exit())
+				Expect(err).NotTo(HaveOccurred())
+
+				cmd = exec.Command(binaries.ExecutorPath)
+				session, err = gexec.Start(cmd, GinkgoWriter, GinkgoWriter)
+				Eventually(session, 80).Should(gexec.Exit())
+
+				cmd = exec.Command(binaries.UploaderPath)
+				session, err = gexec.Start(cmd, GinkgoWriter, GinkgoWriter)
+				Eventually(session, 10).Should(gexec.Exit())
+			})
+
+			It("should successfully upload the droplet", func() {
+				Expect(session.ExitCode()).To(BeZero())
 			})
 
 		})
 	})
 })
+
+func verifyUploaderResponse() http.HandlerFunc {
+	return func(w http.ResponseWriter, req *http.Request) {
+		body, err := ioutil.ReadAll(req.Body)
+		req.Body.Close()
+		Expect(err).ShouldNot(HaveOccurred())
+
+		var uploaderResponse models.TaskCallbackResponse
+		err = json.Unmarshal(body, &uploaderResponse)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(uploaderResponse.FailureReason).To(BeEmpty())
+		Expect(uploaderResponse.Result).To(ContainSubstring("ruby"))
+	}
+}
 
 func chownR(path, username, group string) error {
 	uid, gid, err := getIds(username, group)

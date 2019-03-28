@@ -16,16 +16,30 @@ const (
 )
 
 func main() {
-
 	buildpackCfg := os.Getenv(eirini.EnvBuildpacks)
 	stagingGUID := os.Getenv(eirini.EnvStagingGUID)
 	completionCallback := os.Getenv(eirini.EnvCompletionCallback)
 	eiriniAddress := os.Getenv(eirini.EnvEiriniAddress)
 	dropletUploadURL := os.Getenv(eirini.EnvDropletUploadURL)
 
+	certPath, ok := os.LookupEnv(eirini.EnvCertsPath)
+	if !ok {
+		certPath = eirini.CCCertsMountPath
+	}
+
+	dropletLocation, ok := os.LookupEnv(eirini.EnvOutputDropletLocation)
+	if !ok {
+		dropletLocation = OutputDropletLocation
+	}
+
+	metadataLocation, ok := os.LookupEnv(eirini.EnvOutputMetadataLocation)
+	if !ok {
+		metadataLocation = OutputMetadataLocation
+	}
+
 	responder := recipe.NewResponder(stagingGUID, completionCallback, eiriniAddress)
 
-	client, err := createUploaderHTTPClient()
+	client, err := createUploaderHTTPClient(certPath)
 	if err != nil {
 		responder.RespondWithFailure(err)
 		os.Exit(1)
@@ -35,13 +49,13 @@ func main() {
 		Client: client,
 	}
 
-	err = uploadClient.Upload(dropletUploadURL, OutputDropletLocation)
+	err = uploadClient.Upload(dropletUploadURL, dropletLocation)
 	if err != nil {
 		responder.RespondWithFailure(err)
 		os.Exit(1)
 	}
 
-	resp, err := responder.PrepareSuccessResponse(OutputMetadataLocation, buildpackCfg)
+	resp, err := responder.PrepareSuccessResponse(metadataLocation, buildpackCfg)
 	if err != nil {
 		// TODO: log error
 		responder.RespondWithFailure(err)
@@ -55,10 +69,10 @@ func main() {
 	}
 }
 
-func createUploaderHTTPClient() (*http.Client, error) {
-	cert := filepath.Join(eirini.CCCertsMountPath, eirini.CCUploaderCertName)
-	cacert := filepath.Join(eirini.CCCertsMountPath, eirini.CCInternalCACertName)
-	key := filepath.Join(eirini.CCCertsMountPath, eirini.CCUploaderKeyName)
+func createUploaderHTTPClient(certPath string) (*http.Client, error) {
+	cacert := filepath.Join(certPath, eirini.CCInternalCACertName)
+	cert := filepath.Join(certPath, eirini.CCAPICertName)
+	key := filepath.Join(certPath, eirini.CCAPIKeyName)
 
 	return util.CreateTLSHTTPClient([]util.CertPaths{
 		{Crt: cert, Key: key, Ca: cacert},

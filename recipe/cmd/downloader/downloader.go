@@ -76,11 +76,11 @@ func main() {
 }
 
 func createDownloadHTTPClient(certPath string) (*http.Client, error) {
-	apiCA := filepath.Join(certPath, eirini.CCInternalCACertName)
+	cacert := filepath.Join(certPath, eirini.CCInternalCACertName)
 	cert := filepath.Join(certPath, eirini.CCAPICertName)
 	key := filepath.Join(certPath, eirini.CCAPIKeyName)
 
 	return util.CreateTLSHTTPClient([]util.CertPaths{
-		{Crt: cert, Key: key, Ca: apiCA},
+		{Crt: cert, Key: key, Ca: cacert},
 	})
 }
