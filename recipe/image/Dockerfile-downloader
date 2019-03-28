@@ -5,7 +5,7 @@ WORKDIR /workspace
 
 RUN mkdir -p /packs
 
-COPY downloader /packs/
+COPY bin/downloader /packs/
 
 ENTRYPOINT [ \
   "/packs/downloader" \

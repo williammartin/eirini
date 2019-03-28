@@ -5,8 +5,8 @@ WORKDIR /workspace
 
 RUN mkdir -p /packs
 
-COPY builder /packs/
-COPY executor /packs/
+COPY bin/builder /packs/
+COPY bin/executor /packs/
 
 ENTRYPOINT [ \
   "/packs/executor" \
