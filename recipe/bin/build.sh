@@ -19,7 +19,7 @@ build-recipe() {
 
 build-packs-builder() {
   pushd "$BASEDIR"/packs/cf/cmd/builder
-  #  GOOS=linux CGO_ENABLED=0 go build -a -installsuffix static -o "$BASEDIR"/image/builder
+    GOOS=linux CGO_ENABLED=0 go build -a -installsuffix static -o "$BASEDIR"/image/builder
   popd
 
 }

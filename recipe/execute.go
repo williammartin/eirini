@@ -9,7 +9,6 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"time"
 
 	"code.cloudfoundry.org/bbs/models"
 	bap "code.cloudfoundry.org/buildpackapplifecycle"
@@ -102,9 +101,7 @@ func (e *PacksExecutor) ExecuteRecipe(recipeConf Config) error {
 	if err != nil {
 		return err
 	}
-	for {
-		time.Sleep(10 * time.Second)
-	}
+
 	return sendCompleteResponse(recipeConf.EiriniAddr, cbResponse)
 }
 
