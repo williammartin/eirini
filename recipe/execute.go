@@ -80,6 +80,12 @@ func (e *PacksExecutor) ExecuteRecipe(recipeConf Config) error {
 		return err
 	}
 
+	err = e.vcapDir(e.Conf.OutputBuildArtifactsCache)
+	if err != nil {
+		respondWithFailure(err, recipeConf)
+		return err
+	}
+
 	err = e.Commander.Exec("chown", "vcap:vcap", e.Conf.OutputDropletLocation)
 	if err != nil {
 		respondWithFailure(err, recipeConf)
@@ -103,6 +109,18 @@ func (e *PacksExecutor) ExecuteRecipe(recipeConf Config) error {
 	}
 
 	return sendCompleteResponse(recipeConf.EiriniAddr, cbResponse)
+}
+
+func (e *PacksExecutor) vcapDir(dirs ...string) error {
+	for _, dir := range dirs {
+		if err := os.MkdirAll(dir, 0777); err != nil {
+			return err
+		}
+		if err := e.Commander.Exec("chown", "vcap:vcap", dir); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func (e *PacksExecutor) createSuccessResponse(recipeConf Config) (*models.TaskCallbackResponse, error) {
