@@ -10,11 +10,6 @@ import (
 	"code.cloudfoundry.org/eirini/util"
 )
 
-const (
-	OutputMetadataLocation = "/out/result.json"
-	OutputDropletLocation  = "/out/droplet.tgz"
-)
-
 func main() {
 	buildpackCfg := os.Getenv(eirini.EnvBuildpacks)
 	stagingGUID := os.Getenv(eirini.EnvStagingGUID)
@@ -29,12 +24,12 @@ func main() {
 
 	dropletLocation, ok := os.LookupEnv(eirini.EnvOutputDropletLocation)
 	if !ok {
-		dropletLocation = OutputDropletLocation
+		dropletLocation = eirini.RecipeOutputDropletLocation
 	}
 
 	metadataLocation, ok := os.LookupEnv(eirini.EnvOutputMetadataLocation)
 	if !ok {
-		metadataLocation = OutputMetadataLocation
+		metadataLocation = eirini.RecipeOutputMetadataLocation
 	}
 
 	responder := recipe.NewResponder(stagingGUID, completionCallback, eiriniAddress)

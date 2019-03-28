@@ -68,19 +68,48 @@ func (d *TaskDesirer) toStagingJob(task *opi.Task) *batch.Job {
 		},
 	}
 
-	volumeMounts := []v1.VolumeMount{
-		{
-			Name:      eirini.CCCertsVolumeName,
-			ReadOnly:  true,
-			MountPath: eirini.CCCertsMountPath,
+	secretsVolumeMount := v1.VolumeMount{
+		Name:      eirini.CCCertsVolumeName,
+		ReadOnly:  true,
+		MountPath: eirini.CCCertsMountPath,
+	}
+
+	outputVolume, outputVolumeMount := getVolume(eirini.RecipeOutputName, eirini.RecipeOutputLocation)
+	buildpacksVolume, buildpacksVolumeMount := getVolume(eirini.RecipeBuildPacksName, eirini.RecipeBuildPacksDir)
+	workspaceVolume, workspaceVolumeMount := getVolume(eirini.RecipeWorkspaceName, eirini.RecipeWorkspaceDir)
+
+	var downloaderVolumeMounts, executorVolumeMounts, uploaderVolumeMounts []v1.VolumeMount
+
+	downloaderVolumeMounts = append(downloaderVolumeMounts, secretsVolumeMount, buildpacksVolumeMount, workspaceVolumeMount)
+	executorVolumeMounts = append(executorVolumeMounts, buildpacksVolumeMount, workspaceVolumeMount, outputVolumeMount)
+	uploaderVolumeMounts = append(uploaderVolumeMounts, secretsVolumeMount, outputVolumeMount)
+
+	job.Spec.Template.Spec.Containers[0].VolumeMounts = downloaderVolumeMounts
+	job.Spec.Template.Spec.Containers[1].VolumeMounts = executorVolumeMounts
+	job.Spec.Template.Spec.Containers[2].VolumeMounts = uploaderVolumeMounts
+
+	volumes := []v1.Volume{outputVolume, buildpacksVolume, workspaceVolume}
+	job.Spec.Template.Spec.Volumes = volumes
+
+	return job
+}
+
+func getVolume(name, path string) (v1.Volume, v1.VolumeMount) {
+	mount := v1.VolumeMount{
+		Name:      name,
+		MountPath: path,
+	}
+
+	vol := v1.Volume{
+		Name: name,
+		VolumeSource: v1.VolumeSource{
+			PersistentVolumeClaim: &v1.PersistentVolumeClaimVolumeSource{
+				ClaimName: name,
+			},
 		},
 	}
 
-	// only the downloader and the uploader require cc-uploader certs
-	job.Spec.Template.Spec.Containers[0].VolumeMounts = volumeMounts
-	job.Spec.Template.Spec.Containers[2].VolumeMounts = volumeMounts
-
-	return job
+	return vol, mount
 }
 
 func toJob(task *opi.Task) *batch.Job {

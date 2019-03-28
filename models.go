@@ -32,7 +32,11 @@ const (
 	RegisteredRoutes = "routes"
 
 	RecipeBuildPacksDir             = "/var/lib/buildpacks"
+	RecipeBuildPacksName            = "recipe_buildpacks"
 	RecipeWorkspaceDir              = "/workspace"
+	RecipeWorkspaceName             = "recipe_workspace"
+	RecipeOutputName                = "staging_output"
+	RecipeOutputLocation            = "/out"
 	RecipeOutputDropletLocation     = "/out/droplet.tgz"
 	RecipeOutputBuildArtifactsCache = "/cache/cache.tgz"
 	RecipeOutputMetadataLocation    = "/out/result.json"
