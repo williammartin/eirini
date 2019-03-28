@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"time"
 
 	"code.cloudfoundry.org/bbs/models"
 	bap "code.cloudfoundry.org/buildpackapplifecycle"
@@ -65,13 +66,27 @@ func (e *PacksExecutor) ExecuteRecipe(recipeConf Config) error {
 	}
 
 	args := []string{
+		"-buildDir", workspaceDir,
+		"-buildpackOrder", "binary_buildpack",
 		"-buildpacksDir", e.Conf.BuildpacksDir,
-		"-outputDroplet", e.Conf.OutputDropletLocation,
 		"-outputBuildArtifactsCache", e.Conf.OutputBuildArtifactsCache,
+		"-outputDroplet", e.Conf.OutputDropletLocation,
 		"-outputMetadata", e.Conf.OutputMetadataLocation,
+		"-skipDetect", "true",
 	}
 
 	err = e.Commander.Exec("/packs/builder", args...)
+	if err != nil {
+		respondWithFailure(err, recipeConf)
+		return err
+	}
+
+	err = e.Commander.Exec("chown", "vcap:vcap", e.Conf.OutputDropletLocation)
+	if err != nil {
+		respondWithFailure(err, recipeConf)
+		return err
+	}
+	err = e.Commander.Exec("chown", "-R", "vcap:vcap", e.Conf.OutputDropletLocation)
 	if err != nil {
 		respondWithFailure(err, recipeConf)
 		return err
@@ -87,7 +102,9 @@ func (e *PacksExecutor) ExecuteRecipe(recipeConf Config) error {
 	if err != nil {
 		return err
 	}
-
+	for {
+		time.Sleep(10 * time.Second)
+	}
 	return sendCompleteResponse(recipeConf.EiriniAddr, cbResponse)
 }
 

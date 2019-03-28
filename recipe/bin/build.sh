@@ -19,14 +19,14 @@ build-recipe() {
 
 build-packs-builder() {
   pushd "$BASEDIR"/packs/cf/cmd/builder
-    GOOS=linux CGO_ENABLED=0 go build -a -installsuffix static -o "$BASEDIR"/image/builder
+  #  GOOS=linux CGO_ENABLED=0 go build -a -installsuffix static -o "$BASEDIR"/image/builder
   popd
 
 }
 
 build-image() {
   pushd "$BASEDIR"/image
-    docker build --build-arg buildpacks="$(< "buildpacks.json")" -t "eirini/recipe:${TAG}" .
+    docker build -t "eirini/recipe:${TAG}" .
   popd
 }
 
