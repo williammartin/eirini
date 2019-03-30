@@ -27,16 +27,11 @@ var _ = Describe("Responder", func() {
 		})
 
 		JustBeforeEach(func() {
-			cfg := recipe.Config{
-				AppID:              "app-id",
-				StagingGUID:        "staging-guid",
-				CompletionCallback: "completion-call-me-back",
-				EiriniAddr:         server.URL(),
-				DropletUploadURL:   "droplet.eu/upload",
-				PackageDownloadURL: server.URL() + "app-id",
-			}
+			stagingGUID := "staging-guid"
+			completionCallback := "completion-call-me-back"
+			eiriniAddr := server.URL()
 
-			responder = recipe.NewResponder(cfg)
+			responder = recipe.NewResponder(stagingGUID, completionCallback, eiriniAddr)
 		})
 
 		AfterEach(func() {

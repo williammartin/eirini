@@ -22,6 +22,7 @@ type Buildpack struct {
 type BuildpackManager struct {
 	unzipper       Unzipper
 	buildpackDir   string
+	buildpacksJSON string
 	internalClient *http.Client
 	defaultClient  *http.Client
 }
@@ -46,15 +47,24 @@ func OpenBuildpackURL(buildpack *Buildpack, client *http.Client) ([]byte, error)
 	return bytes, nil
 }
 
-func NewBuildpackManager(internalClient *http.Client, defaultClient *http.Client, buildpackDir string) *BuildpackManager {
+func NewBuildpackManager(internalClient *http.Client, defaultClient *http.Client, buildpackDir, buildpacksJSON string) Installer {
 	return &BuildpackManager{
 		internalClient: internalClient,
 		defaultClient:  defaultClient,
 		buildpackDir:   buildpackDir,
+		buildpacksJSON: buildpacksJSON,
 	}
 }
 
-func (b *BuildpackManager) Install(buildpacks []Buildpack) error {
+func (b *BuildpackManager) Install() error {
+	var buildpacks []Buildpack
+
+	err := json.Unmarshal([]byte(b.buildpacksJSON), &buildpacks)
+	if err != nil {
+		fmt.Println(fmt.Sprintf("Error unmarshaling environment variable %s: %s", b.buildpacksJSON, err.Error()))
+		return err
+	}
+
 	for _, buildpack := range buildpacks {
 		if err := b.install(buildpack); err != nil {
 			return err
@@ -65,7 +75,6 @@ func (b *BuildpackManager) Install(buildpacks []Buildpack) error {
 }
 
 func (b *BuildpackManager) install(buildpack Buildpack) (err error) {
-
 	var bytes []byte
 	bytes, err = OpenBuildpackURL(&buildpack, b.internalClient)
 	if err != nil {

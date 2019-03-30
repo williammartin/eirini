@@ -1,8 +1,6 @@
 package recipe_test
 
 import (
-	"archive/zip"
-	"bytes"
 	"crypto/md5"
 	"encoding/json"
 	"fmt"
@@ -22,7 +20,8 @@ var _ = Describe("Buildpackmanager", func() {
 	var (
 		client           *http.Client
 		buildpackDir     string
-		buildpackManager *recipe.BuildpackManager
+		buildpacksJSON   []byte
+		buildpackManager recipe.Installer
 		buildpacks       []recipe.Buildpack
 		server           *ghttp.Server
 		responseContent  []byte
@@ -34,8 +33,6 @@ var _ = Describe("Buildpackmanager", func() {
 
 		buildpackDir, err = ioutil.TempDir("", "buildpacks")
 		Expect(err).ToNot(HaveOccurred())
-
-		buildpackManager = recipe.NewBuildpackManager(client, client, buildpackDir)
 
 		responseContent, err = makeZippedPackage()
 		Expect(err).ToNot(HaveOccurred())
@@ -67,7 +64,11 @@ var _ = Describe("Buildpackmanager", func() {
 	})
 
 	JustBeforeEach(func() {
-		err = buildpackManager.Install(buildpacks)
+		buildpacksJSON, err = json.Marshal(buildpacks)
+		Expect(err).NotTo(HaveOccurred())
+
+		buildpackManager = recipe.NewBuildpackManager(client, client, buildpackDir, string(buildpacksJSON))
+		err = buildpackManager.Install()
 	})
 
 	Context("When a list of Buildpacks needs be installed", func() {
@@ -131,15 +132,3 @@ var _ = Describe("Buildpackmanager", func() {
 		})
 	})
 })
-
-func makeZippedPackage() ([]byte, error) {
-	buf := bytes.Buffer{}
-	w := zip.NewWriter(&buf)
-
-	err := w.Close()
-	if err != nil {
-		return nil, err
-	}
-
-	return buf.Bytes(), nil
-}

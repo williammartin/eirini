@@ -18,7 +18,7 @@ type Uploader interface {
 
 //go:generate counterfeiter . Installer
 type Installer interface {
-	Install(appID, targetDir string) error
+	Install() error
 }
 
 //go:generate counterfeiter . Commander

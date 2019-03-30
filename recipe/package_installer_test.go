@@ -9,7 +9,7 @@ import (
 	"path/filepath"
 
 	"code.cloudfoundry.org/eirini/eirinifakes"
-	. "code.cloudfoundry.org/eirini/recipe"
+	"code.cloudfoundry.org/eirini/recipe"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -21,7 +21,7 @@ var _ = Describe("PackageInstaller", func() {
 		err           error
 		downloadURL   string
 		targetDir     string
-		installer     Installer
+		installer     recipe.Installer
 		server        *ghttp.Server
 		extractor     *eirinifakes.FakeExtractor
 		zipPath       string
@@ -33,7 +33,6 @@ var _ = Describe("PackageInstaller", func() {
 		Expect(err).ToNot(HaveOccurred())
 
 		extractor = new(eirinifakes.FakeExtractor)
-		installer = &PackageInstaller{Client: &http.Client{}, Extractor: extractor}
 
 		server = ghttp.NewServer()
 		server.AppendHandlers(
@@ -52,7 +51,8 @@ var _ = Describe("PackageInstaller", func() {
 	})
 
 	JustBeforeEach(func() {
-		err = installer.Install(downloadURL, targetDir)
+		installer = recipe.NewPackageInstaller(&http.Client{}, extractor, downloadURL, targetDir)
+		err = installer.Install()
 	})
 
 	AfterEach(func() {
@@ -102,7 +102,7 @@ var _ = Describe("PackageInstaller", func() {
 
 		It("should return an error", func() {
 			Expect(err).To(HaveOccurred())
-			Expect(err).To(MatchError(ContainSubstring("empty targetDir provided")))
+			Expect(err).To(MatchError(ContainSubstring("empty extractDir provided")))
 		})
 		assertNoInteractionsWithExtractor()
 	})

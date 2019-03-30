@@ -11,27 +11,38 @@ import (
 )
 
 type PackageInstaller struct {
-	Client    *http.Client
-	Extractor eirini.Extractor
+	client      *http.Client
+	extractor   eirini.Extractor
+	downloadURL string
+	extractDir  string
 }
 
-func (d *PackageInstaller) Install(downloadURL, targetDir string) error {
-	if downloadURL == "" {
+func NewPackageInstaller(client *http.Client, extractor eirini.Extractor, downloadURL, extractDir string) Installer {
+	return &PackageInstaller{
+		client:      client,
+		extractor:   extractor,
+		downloadURL: downloadURL,
+		extractDir:  extractDir,
+	}
+}
+
+func (d *PackageInstaller) Install() error {
+	if d.downloadURL == "" {
 		return errors.New("empty downloadURL provided")
 	}
 
-	if targetDir == "" {
-		return errors.New("empty targetDir provided")
+	if d.extractDir == "" {
+		return errors.New("empty extractDir provided")
 	}
 
 	zipPath := "/tmp/app.zip"
 
-	err := d.download(downloadURL, zipPath)
+	err := d.download(d.downloadURL, zipPath)
 	if err != nil {
 		return err
 	}
 
-	return d.Extractor.Extract(zipPath, targetDir)
+	return d.extractor.Extract(zipPath, d.extractDir)
 }
 
 func (d *PackageInstaller) download(downloadURL string, filepath string) error {
@@ -57,7 +68,7 @@ func (d *PackageInstaller) download(downloadURL string, filepath string) error {
 }
 
 func (d *PackageInstaller) fetchAppBits(url string) (io.ReadCloser, error) {
-	resp, err := d.Client.Get(url)
+	resp, err := d.client.Get(url)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to perform request")
 	}

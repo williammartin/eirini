@@ -6,6 +6,7 @@ import (
 
 	"code.cloudfoundry.org/eirini"
 	"code.cloudfoundry.org/eirini/recipe"
+	"github.com/pkg/errors"
 )
 
 func main() {
@@ -67,7 +68,7 @@ func main() {
 
 	err := executor.ExecuteRecipe()
 	if err != nil {
-		responder.RespondWithFailure(err)
+		responder.RespondWithFailure(errors.Wrap(err, "failed"))
 		os.Exit(1)
 	}
 

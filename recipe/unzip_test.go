@@ -13,7 +13,7 @@ import (
 	. "code.cloudfoundry.org/eirini/recipe"
 )
 
-var _ = FDescribe("Unzip function", func() {
+var _ = Describe("Unzip function", func() {
 
 	var (
 		targetDir string

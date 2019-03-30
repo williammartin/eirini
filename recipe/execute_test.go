@@ -50,6 +50,8 @@ var _ = Describe("PacksExecutor", func() {
 	JustBeforeEach(func() {
 		createTmpFile()
 		packsConf := PacksBuilderConf{
+			PacksBuilderPath:          "/packs/builder",
+			BuildDir:                  "some-dir",
 			BuildpacksDir:             "/var/lib/buildpacks",
 			OutputDropletLocation:     "/out/droplet.tgz",
 			OutputBuildArtifactsCache: "/cache/cache.tgz",
@@ -89,15 +91,8 @@ var _ = Describe("PacksExecutor", func() {
 		})
 
 		JustBeforeEach(func() {
-			recipeConf := Config{
-				AppID:              "app-id",
-				StagingGUID:        "staging-guid",
-				CompletionCallback: "completion-call-me-back",
-				EiriniAddr:         server.URL(),
-				DropletUploadURL:   "droplet.eu/upload",
-				PackageDownloadURL: server.URL() + "app-id",
-			}
-			err = executor.ExecuteRecipe(recipeConf)
+			err = executor.ExecuteRecipe()
+			Expect(err).NotTo(HaveOccurred())
 		})
 
 		AfterEach(func() {
@@ -114,103 +109,13 @@ var _ = Describe("PacksExecutor", func() {
 			cmd, args := commander.ExecArgsForCall(0)
 			Expect(cmd).To(Equal("/packs/builder"))
 			Expect(args).To(ConsistOf(
+				"-buildDir", "some-dir",
 				"-buildpacksDir", "/var/lib/buildpacks",
 				"-outputDroplet", "/out/droplet.tgz",
 				"-outputBuildArtifactsCache", "/cache/cache.tgz",
 				"-outputMetadata", tmpfile.Name(),
 			))
 		})
-
-		// Context("and download or extract of app bits fails", func() {
-		//
-		// 	BeforeEach(func() {
-		// 		installer.InstallReturns(errors.New("boom"))
-		// 		server.RouteToHandler("PUT", "/stage/staging-guid/completed",
-		// 			ghttp.VerifyJSON(`{
-		// 				"task_guid": "staging-guid",
-		// 				"failed": true,
-		// 				"failure_reason": "boom",
-		// 				"result": "",
-		// 				"annotation": "{\"lifecycle\":\"\",\"completion_callback\":\"completion-call-me-back\"}",
-		// 				"created_at": 0
-		// 			}`),
-		// 		)
-		// 	})
-		//
-		// 	It("should return an error", func() {
-		// 		Expect(err).To(HaveOccurred())
-		// 	})
-		//
-		// 	It("should send completion response with a failure", func() {
-		// 		Expect(server.ReceivedRequests()).To(HaveLen(1))
-		// 	})
-		//
-		// })
-
-		// Context("and it fails to execute packs builder", func() {
-		//
-		// 	BeforeEach(func() {
-		// 		commander.ExecReturns(errors.New("boomz"))
-		// 		server.RouteToHandler("PUT", "/stage/staging-guid/completed",
-		// 			ghttp.VerifyJSON(`{
-		// 				"task_guid": "staging-guid",
-		// 				"failed": true,
-		// 				"failure_reason": "boomz",
-		// 				"result": "",
-		// 				"annotation": "{\"lifecycle\":\"\",\"completion_callback\":\"completion-call-me-back\"}",
-		// 				"created_at": 0
-		// 			}`),
-		// 		)
-		// 	})
-		//
-		// 	It("should return an error", func() {
-		// 		Expect(err).To(HaveOccurred())
-		// 	})
-		//
-		// 	It("should send completion response with a failure", func() {
-		// 		Expect(server.ReceivedRequests()).To(HaveLen(1))
-		// 	})
-		// })
-
-		// Context("and it fails to upload the droplet", func() {
-		//
-		// 	BeforeEach(func() {
-		// 		uploader.UploadReturns(errors.New("booma"))
-		// 		server.RouteToHandler("PUT", "/stage/staging-guid/completed",
-		// 			ghttp.VerifyJSON(`{
-		// 				"task_guid": "staging-guid",
-		// 				"failed": true,
-		// 				"failure_reason": "booma",
-		// 				"result": "",
-		// 				"annotation": "{\"lifecycle\":\"\",\"completion_callback\":\"completion-call-me-back\"}",
-		// 				"created_at": 0
-		// 			}`),
-		// 		)
-		// 	})
-		//
-		// 	It("should return an error", func() {
-		// 		Expect(err).To(HaveOccurred())
-		// 	})
-		//
-		// 	It("should send completion response with a failure", func() {
-		// 		Expect(server.ReceivedRequests()).To(HaveLen(1))
-		// 	})
-		// })
-
-		// Context("and eirini returns response with failure status", func() {
-		//
-		// 	BeforeEach(func() {
-		// 		server.RouteToHandler("PUT", "/stage/staging-guid/completed",
-		// 			ghttp.RespondWith(http.StatusInternalServerError, ""),
-		// 		)
-		// 	})
-		//
-		// 	It("should return an error", func() {
-		// 		Expect(server.ReceivedRequests()).To(HaveLen(1))
-		// 		Expect(err).To(HaveOccurred())
-		// 	})
-		//
-		// })
 
 	})
 

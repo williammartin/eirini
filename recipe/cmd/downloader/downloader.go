@@ -1,7 +1,6 @@
 package main
 
 import (
-	"encoding/json"
 	"fmt"
 	"net/http"
 	"os"
@@ -10,6 +9,7 @@ import (
 	"code.cloudfoundry.org/eirini"
 	"code.cloudfoundry.org/eirini/recipe"
 	"code.cloudfoundry.org/eirini/util"
+	"github.com/pkg/errors"
 )
 
 func main() {
@@ -44,32 +44,17 @@ func main() {
 		os.Exit(1)
 	}
 
-	buildPackManager := recipe.NewBuildpackManager(downloadClient, http.DefaultClient, buildpacksDir)
+	buildpackManager := recipe.NewBuildpackManager(downloadClient, http.DefaultClient, buildpacksDir, buildpacksJSON)
+	packageInstaller := recipe.NewPackageInstaller(downloadClient, &recipe.Unzipper{}, appBitsDownloadURL, workspaceDir)
 
-	installer := &recipe.PackageInstaller{
-		Client:    downloadClient,
-		Extractor: &recipe.Unzipper{},
-	}
-
-	var buildpacks []recipe.Buildpack
-	err = json.Unmarshal([]byte(buildpacksJSON), &buildpacks)
-	if err != nil {
-		fmt.Println(fmt.Sprintf("Error unmarshaling environment variable %s: %s", eirini.EnvBuildpacks, err.Error()))
-		responder.RespondWithFailure(err)
-		os.Exit(1)
-	}
-
-	if err = buildPackManager.Install(buildpacks); err != nil {
-		fmt.Println("Error while installing buildpacks:", err.Error())
-		responder.RespondWithFailure(err)
-		os.Exit(1)
-	}
-
-	err = installer.Install(appBitsDownloadURL, workspaceDir)
-	if err != nil {
-		fmt.Println("Error while installing app bits:", err.Error())
-		responder.RespondWithFailure(err)
-		os.Exit(1)
+	for name, installer := range map[string]recipe.Installer{
+		"buildpack-installer": buildpackManager,
+		"package-installer":   packageInstaller,
+	} {
+		if err = installer.Install(); err != nil {
+			responder.RespondWithFailure(errors.Wrap(err, name))
+			os.Exit(1)
+		}
 	}
 
 	fmt.Println("Downloading completed")
