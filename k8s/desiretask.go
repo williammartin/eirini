@@ -50,19 +50,18 @@ func (d *TaskDesirer) toStagingJob(task *opi.Task) *batch.Job {
 			Hostnames: []string{eirini.CCUploaderInternalURL},
 		},
 	}
-	job.Spec.Template.Spec.Volumes = []v1.Volume{
-		{
-			Name: eirini.CCCertsVolumeName,
-			VolumeSource: v1.VolumeSource{
-				Secret: &v1.SecretVolumeSource{
-					SecretName: d.CertsSecretName,
-					Items: []v1.KeyToPath{
-						{Key: eirini.CCAPICertName, Path: eirini.CCAPICertName},
-						{Key: eirini.CCAPIKeyName, Path: eirini.CCAPIKeyName},
-						{Key: eirini.CCUploaderCertName, Path: eirini.CCUploaderCertName},
-						{Key: eirini.CCUploaderKeyName, Path: eirini.CCUploaderKeyName},
-						{Key: eirini.CCInternalCACertName, Path: eirini.CCInternalCACertName},
-					},
+
+	secretsVolume := v1.Volume{
+		Name: eirini.CCCertsVolumeName,
+		VolumeSource: v1.VolumeSource{
+			Secret: &v1.SecretVolumeSource{
+				SecretName: d.CertsSecretName,
+				Items: []v1.KeyToPath{
+					{Key: eirini.CCAPICertName, Path: eirini.CCAPICertName},
+					{Key: eirini.CCAPIKeyName, Path: eirini.CCAPIKeyName},
+					{Key: eirini.CCUploaderCertName, Path: eirini.CCUploaderCertName},
+					{Key: eirini.CCUploaderKeyName, Path: eirini.CCUploaderKeyName},
+					{Key: eirini.CCInternalCACertName, Path: eirini.CCInternalCACertName},
 				},
 			},
 		},
@@ -84,11 +83,11 @@ func (d *TaskDesirer) toStagingJob(task *opi.Task) *batch.Job {
 	executorVolumeMounts = append(executorVolumeMounts, buildpacksVolumeMount, workspaceVolumeMount, outputVolumeMount)
 	uploaderVolumeMounts = append(uploaderVolumeMounts, secretsVolumeMount, outputVolumeMount)
 
-	job.Spec.Template.Spec.Containers[0].VolumeMounts = downloaderVolumeMounts
-	job.Spec.Template.Spec.Containers[1].VolumeMounts = executorVolumeMounts
-	job.Spec.Template.Spec.Containers[2].VolumeMounts = uploaderVolumeMounts
+	job.Spec.Template.Spec.InitContainers[0].VolumeMounts = downloaderVolumeMounts
+	job.Spec.Template.Spec.InitContainers[1].VolumeMounts = executorVolumeMounts
+	job.Spec.Template.Spec.Containers[0].VolumeMounts = uploaderVolumeMounts
 
-	volumes := []v1.Volume{outputVolume, buildpacksVolume, workspaceVolume}
+	volumes := []v1.Volume{secretsVolume, outputVolume, buildpacksVolume, workspaceVolume}
 	job.Spec.Template.Spec.Volumes = volumes
 
 	return job
@@ -102,11 +101,6 @@ func getVolume(name, path string) (v1.Volume, v1.VolumeMount) {
 
 	vol := v1.Volume{
 		Name: name,
-		VolumeSource: v1.VolumeSource{
-			PersistentVolumeClaim: &v1.PersistentVolumeClaimVolumeSource{
-				ClaimName: name,
-			},
-		},
 	}
 
 	return vol, mount
@@ -122,7 +116,7 @@ func toJob(task *opi.Task) *batch.Job {
 			Template: v1.PodTemplateSpec{
 				Spec: v1.PodSpec{
 					AutomountServiceAccountToken: &automountServiceAccountToken,
-					Containers: []v1.Container{
+					InitContainers: []v1.Container{
 						{
 							Name:            "opi-task-downloader",
 							Image:           task.DownloaderImage,
@@ -135,6 +129,8 @@ func toJob(task *opi.Task) *batch.Job {
 							ImagePullPolicy: v1.PullAlways,
 							Env:             MapToEnvVar(task.Env),
 						},
+					},
+					Containers: []v1.Container{
 						{
 							Name:            "opi-task-uploader",
 							Image:           task.UploaderImage,

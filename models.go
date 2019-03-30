@@ -32,10 +32,10 @@ const (
 	RegisteredRoutes = "routes"
 
 	RecipeBuildPacksDir             = "/var/lib/buildpacks"
-	RecipeBuildPacksName            = "recipe_buildpacks"
-	RecipeWorkspaceDir              = "/workspace"
-	RecipeWorkspaceName             = "recipe_workspace"
-	RecipeOutputName                = "staging_output"
+	RecipeBuildPacksName            = "recipe-buildpacks"
+	RecipeWorkspaceDir              = "/recipe_workspace"
+	RecipeWorkspaceName             = "recipe-workspace"
+	RecipeOutputName                = "staging-output"
 	RecipeOutputLocation            = "/out"
 	RecipeOutputDropletLocation     = "/out/droplet.tgz"
 	RecipeOutputBuildArtifactsCache = "/cache/cache.tgz"
@@ -67,7 +67,7 @@ type Properties struct {
 	EiriniAddress     string `yaml:"eirini_address"`
 	DownloaderImage   string `yaml:"downloader_image"`
 	UploaderImage     string `yaml:"uploader_image"`
-	RunnerImage       string `yaml:"runner_image"`
+	ExecutorImage     string `yaml:"executor_image"`
 
 	MetricsSourceAddress string `yaml:"metrics_source_address"`
 	LoggregatorAddress   string `yaml:"loggregator_address"`
@@ -91,7 +91,7 @@ type StagerConfig struct {
 	EiriniAddress   string
 	DownloaderImage string
 	UploaderImage   string
-	RunnerImage     string
+	ExecutorImage   string
 }
 
 //go:generate counterfeiter . Extractor

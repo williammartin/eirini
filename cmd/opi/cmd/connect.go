@@ -114,7 +114,7 @@ func initStager(cfg *eirini.Config) eirini.Stager {
 		EiriniAddress:   cfg.Properties.EiriniAddress,
 		DownloaderImage: cfg.Properties.DownloaderImage,
 		UploaderImage:   cfg.Properties.UploaderImage,
-		RunnerImage:     cfg.Properties.RunnerImage,
+		ExecutorImage:   cfg.Properties.ExecutorImage,
 	}
 
 	httpClient, err := util.CreateTLSHTTPClient(
