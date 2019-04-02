@@ -9,7 +9,6 @@ import (
 	"code.cloudfoundry.org/eirini"
 	"code.cloudfoundry.org/eirini/recipe"
 	"code.cloudfoundry.org/eirini/util"
-	"github.com/pkg/errors"
 )
 
 func main() {
@@ -47,12 +46,12 @@ func main() {
 	buildpackManager := recipe.NewBuildpackManager(downloadClient, http.DefaultClient, buildpacksDir, buildpacksJSON)
 	packageInstaller := recipe.NewPackageInstaller(downloadClient, &recipe.Unzipper{}, appBitsDownloadURL, workspaceDir)
 
-	for name, installer := range map[string]recipe.Installer{
-		"buildpack-installer": buildpackManager,
-		"package-installer":   packageInstaller,
+	for _, installer := range []recipe.Installer{
+		buildpackManager,
+		packageInstaller,
 	} {
 		if err = installer.Install(); err != nil {
-			responder.RespondWithFailure(errors.Wrap(err, name))
+			responder.RespondWithFailure(err)
 			os.Exit(1)
 		}
 	}

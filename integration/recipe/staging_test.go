@@ -29,8 +29,9 @@ import (
 var _ = FDescribe("StagingText", func() {
 
 	const (
-		stagingGUID        = "5b00de6b-d8f4-476b-b070-303367b46cef"
+		stagingGUID        = "staging-guid"
 		completionCallback = ""
+		responseUrl        = "/stage/staging-guid/completed"
 	)
 
 	var (
@@ -228,6 +229,39 @@ var _ = FDescribe("StagingText", func() {
 				Expect(err).NotTo(HaveOccurred())
 				Expect(actualBytes).To(Equal(expectedBytes))
 			})
+
+			Context("fails", func() {
+				BeforeEach(func() {
+					buildpacks = []recipe.Buildpack{
+						{
+							Name: "app_buildpack",
+							Key:  "app_buildpack",
+							URL:  "bad-url",
+						},
+					}
+
+					buildpackJSON, err := json.Marshal(buildpacks)
+					Expect(err).ToNot(HaveOccurred())
+
+					err = os.Setenv(eirini.EnvBuildpacks, string(buildpackJSON))
+					Expect(err).ToNot(HaveOccurred())
+
+					server.SetHandler(0,
+						ghttp.CombineHandlers(
+							ghttp.VerifyRequest("PUT", responseUrl),
+							verifyResponse(true, "failed to request buildpack"),
+						),
+					)
+				})
+
+				It("should send completion response with a failure", func() {
+					Expect(server.ReceivedRequests()).To(HaveLen(1))
+				})
+
+				It("should exit with non-zero exit code", func() {
+					Expect(session.ExitCode).NotTo(BeZero())
+				})
+			})
 		})
 
 		Context("execute", func() {
@@ -271,15 +305,16 @@ var _ = FDescribe("StagingText", func() {
 
 				err = os.Setenv(eirini.EnvCertsPath, certsPath)
 				Expect(err).ToNot(HaveOccurred())
-			})
 
-			JustBeforeEach(func() {
 				cmd := exec.Command(binaries.DownloaderPath)
 				session, err = gexec.Start(cmd, GinkgoWriter, GinkgoWriter)
 				Eventually(session).Should(gexec.Exit())
 				Expect(err).NotTo(HaveOccurred())
 
-				cmd = exec.Command(binaries.ExecutorPath)
+			})
+
+			JustBeforeEach(func() {
+				cmd := exec.Command(binaries.ExecutorPath)
 				session, err = gexec.Start(cmd, GinkgoWriter, GinkgoWriter)
 				Eventually(session, 80).Should(gexec.Exit())
 			})
@@ -290,6 +325,31 @@ var _ = FDescribe("StagingText", func() {
 				Expect(path.Join(outputDir, "droplet.tgz")).To(BeARegularFile())
 				Expect(path.Join(outputDir, "result.json")).To(BeARegularFile())
 			})
+
+			Context("fails", func() {
+				BeforeEach(func() {
+					err = os.Setenv(eirini.EnvWorkspaceDir, filepath.Join(workspaceDir, "bad-workspace-dir"))
+					Expect(err).NotTo(HaveOccurred())
+
+					server.AppendHandlers(
+						ghttp.CombineHandlers(
+							ghttp.VerifyRequest("PUT", responseUrl),
+							verifyResponse(true, "failed to create droplet"),
+						),
+					)
+				})
+
+				It("should send completion response with a failure", func() {
+					Expect(server.ReceivedRequests()).To(HaveLen(3))
+				})
+
+				It("should exit with non-zero exit code", func() {
+					Expect(session.ExitCode).NotTo(BeZero())
+				})
+
+				AfterEach(func() {
+				})
+			})
 		})
 
 		Context("upload", func() {
@@ -299,8 +359,6 @@ var _ = FDescribe("StagingText", func() {
 
 				buildpackBytes, err = ioutil.ReadFile("testdata/ruby-buildpack-cflinuxfs2-v1.7.35.zip")
 				Expect(err).NotTo(HaveOccurred())
-
-				responseUrl := fmt.Sprintf("/stage/%s/completed", stagingGUID)
 
 				server.AppendHandlers(
 					// Downloader
@@ -322,7 +380,7 @@ var _ = FDescribe("StagingText", func() {
 						ghttp.VerifyRequest("PUT", responseUrl),
 						ghttp.RespondWith(http.StatusOK, ""),
 						ghttp.VerifyMimeType("application/json"),
-						verifyUploaderResponse(),
+						verifyResponse(false, "ruby"),
 					),
 				)
 
@@ -354,9 +412,6 @@ var _ = FDescribe("StagingText", func() {
 				err = os.Setenv(eirini.EnvCertsPath, certsPath)
 				Expect(err).ToNot(HaveOccurred())
 
-			})
-
-			JustBeforeEach(func() {
 				cmd := exec.Command(binaries.DownloaderPath)
 				session, err = gexec.Start(cmd, GinkgoWriter, GinkgoWriter)
 				Eventually(session).Should(gexec.Exit())
@@ -365,8 +420,10 @@ var _ = FDescribe("StagingText", func() {
 				cmd = exec.Command(binaries.ExecutorPath)
 				session, err = gexec.Start(cmd, GinkgoWriter, GinkgoWriter)
 				Eventually(session, 80).Should(gexec.Exit())
+			})
 
-				cmd = exec.Command(binaries.UploaderPath)
+			JustBeforeEach(func() {
+				cmd := exec.Command(binaries.UploaderPath)
 				session, err = gexec.Start(cmd, GinkgoWriter, GinkgoWriter)
 				Eventually(session, 10).Should(gexec.Exit())
 			})
@@ -375,11 +432,49 @@ var _ = FDescribe("StagingText", func() {
 				Expect(session.ExitCode()).To(BeZero())
 			})
 
+			Context("fails", func() {
+				BeforeEach(func() {
+					err = os.Setenv(eirini.EnvOutputDropletLocation, path.Join(outputDir, "bad-location.tgz"))
+					Expect(err).NotTo(HaveOccurred())
+
+					server.SetHandler(2,
+						ghttp.CombineHandlers(
+							ghttp.VerifyRequest("PUT", responseUrl),
+							verifyResponse(true, "no such file"),
+						),
+					)
+				})
+
+				It("should send completion response with a failure", func() {
+					Expect(server.ReceivedRequests()).To(HaveLen(3))
+				})
+
+				It("should return an error", func() {
+					Expect(server.ReceivedRequests()).To(HaveLen(3))
+					Expect(session.ExitCode).NotTo(BeZero())
+				})
+			})
+
+			Context("and eirini returns response with failure status", func() {
+				BeforeEach(func() {
+					server.SetHandler(3,
+						ghttp.CombineHandlers(
+							ghttp.VerifyRequest("PUT", responseUrl),
+							ghttp.RespondWith(http.StatusInternalServerError, ""),
+						),
+					)
+				})
+
+				It("should return an error", func() {
+					Expect(server.ReceivedRequests()).To(HaveLen(4))
+					Expect(session.ExitCode).NotTo(BeZero())
+				})
+			})
 		})
 	})
 })
 
-func verifyUploaderResponse() http.HandlerFunc {
+func verifyResponse(failed bool, reason string) http.HandlerFunc {
 	return func(w http.ResponseWriter, req *http.Request) {
 		body, err := ioutil.ReadAll(req.Body)
 		req.Body.Close()
@@ -388,8 +483,12 @@ func verifyUploaderResponse() http.HandlerFunc {
 		var uploaderResponse models.TaskCallbackResponse
 		err = json.Unmarshal(body, &uploaderResponse)
 		Expect(err).NotTo(HaveOccurred())
-		Expect(uploaderResponse.FailureReason).To(BeEmpty())
-		Expect(uploaderResponse.Result).To(ContainSubstring("ruby"))
+		Expect(uploaderResponse.Failed).To(Equal(failed))
+		if failed {
+			Expect(uploaderResponse.FailureReason).To(ContainSubstring(reason))
+		} else {
+			Expect(uploaderResponse.Result).To(ContainSubstring(reason))
+		}
 	}
 }
 

@@ -10,7 +10,6 @@ import (
 )
 
 func main() {
-
 	stagingGUID := os.Getenv(eirini.EnvStagingGUID)
 	completionCallback := os.Getenv(eirini.EnvCompletionCallback)
 	eiriniAddress := os.Getenv(eirini.EnvEiriniAddress)
@@ -68,7 +67,7 @@ func main() {
 
 	err := executor.ExecuteRecipe()
 	if err != nil {
-		responder.RespondWithFailure(errors.Wrap(err, "failed"))
+		responder.RespondWithFailure(errors.Wrap(err, "failed to create droplet"))
 		os.Exit(1)
 	}
 
